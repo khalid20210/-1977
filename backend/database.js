@@ -1,377 +1,384 @@
-const { DatabaseSync } = require('node:sqlite');
+﻿const { Pool, types } = require('pg');
 const bcrypt = require('bcryptjs');
-const path = require('path');
 
-const db = new DatabaseSync(path.join(__dirname, 'weseet.db'));
+// Parse PostgreSQL BIGINT (COUNT(*) returns bigint) as JavaScript integer
+types.setTypeParser(20, parseInt);
 
-db.exec('PRAGMA journal_mode = WAL');
-db.exec('PRAGMA foreign_keys = ON');
+require('dotenv').config();
 
-// Create tables separately to avoid parsing issues
-db.exec(`CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'employee',
-  partner_type TEXT,
-  status TEXT NOT NULL DEFAULT 'pending',
-  phone TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+const pool = new Pool({
+  ssl: { rejectUnauthorized: false }
+});
 
-db.exec(`CREATE TABLE IF NOT EXISTS permissions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  key TEXT UNIQUE NOT NULL,
-  label TEXT NOT NULL,
-  description TEXT,
-  category TEXT DEFAULT 'عام',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS user_permissions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  permission_key TEXT NOT NULL,
-  granted_by INTEGER NOT NULL,
-  granted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, permission_key),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (granted_by) REFERENCES users(id)
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS funding_entities (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  priority INTEGER DEFAULT 0,
-  min_pos_amount REAL DEFAULT 0,
-  min_deposit_amount REAL DEFAULT 0,
-  min_transfer_amount REAL DEFAULT 0,
-  min_deposit_transfer_amount REAL DEFAULT 0,
-  min_months INTEGER DEFAULT 6,
-  product_types TEXT DEFAULT '[]',
-  required_documents TEXT DEFAULT '[]',
-  notes TEXT,
-  whatsapp_number TEXT,
-  additional_whatsapp_numbers TEXT DEFAULT '[]',
-  is_active INTEGER DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS funding_entity_contacts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  funding_entity_id INTEGER NOT NULL,
-  name TEXT NOT NULL,
-  phone TEXT,
-  product_types TEXT DEFAULT '[]',
-  notes TEXT,
-  is_active INTEGER DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (funding_entity_id) REFERENCES funding_entities(id) ON DELETE CASCADE
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS requests (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  company_name TEXT NOT NULL,
-  owner_name TEXT,
-  owner_phone TEXT,
-  entity_type TEXT NOT NULL DEFAULT 'شركة',
-  ownership_type TEXT DEFAULT 'سعودي',
-  funding_type TEXT DEFAULT 'نقاط بيع',
-  status TEXT NOT NULL DEFAULT 'draft',
-  rejection_reason TEXT,
-  funding_entity_id INTEGER,
-  analysis_result TEXT DEFAULT '{}',
-  total_pos REAL DEFAULT 0,
-  total_deposit REAL DEFAULT 0,
-  total_transfer REAL DEFAULT 0,
-  statement_months INTEGER DEFAULT 0,
-  notes TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (funding_entity_id) REFERENCES funding_entities(id)
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS companies (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  company_name TEXT NOT NULL,
-  entity_type TEXT DEFAULT 'شركة',
-  owner_name TEXT,
-  owner_phone TEXT,
-  request_id INTEGER,
-  user_id INTEGER,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE SET NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS bank_statements (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  request_id INTEGER NOT NULL,
-  file_path TEXT NOT NULL,
-  file_name TEXT NOT NULL,
-  period_label TEXT DEFAULT '',
-  pos_amount REAL DEFAULT 0,
-  deposit_amount REAL DEFAULT 0,
-  transfer_amount REAL DEFAULT 0,
-  analysis_status TEXT DEFAULT 'pending',
-  analysis_data TEXT DEFAULT '{}',
-  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS account_statements (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  request_id INTEGER NOT NULL,
-  file_path TEXT NOT NULL,
-  file_name TEXT NOT NULL,
-  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS tax_documents (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  request_id INTEGER NOT NULL,
-  file_path TEXT NOT NULL,
-  file_name TEXT NOT NULL,
-  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS campaigns (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  title TEXT NOT NULL,
-  message TEXT,
-  image_path TEXT,
-  status TEXT DEFAULT 'draft',
-  sent_at DATETIME,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS request_documents (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  request_id INTEGER NOT NULL,
-  document_name TEXT NOT NULL,
-  file_path TEXT,
-  file_name TEXT,
-  expiry_date TEXT,
-  status TEXT DEFAULT 'missing',
-  uploaded_at DATETIME,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS status_history (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  request_id INTEGER NOT NULL,
-  status TEXT NOT NULL,
-  note TEXT,
-  created_by INTEGER NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES users(id)
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS request_messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  request_id INTEGER NOT NULL,
-  sender_id INTEGER NOT NULL,
-  message TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
-  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
-)`);
-db.exec(`CREATE TABLE IF NOT EXISTS message_reads (
-  user_id INTEGER NOT NULL,
-  request_id INTEGER NOT NULL,
-  last_read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (user_id, request_id),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
-)`);
-db.exec(`CREATE TABLE IF NOT EXISTS missing_items_alerts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  request_id INTEGER NOT NULL,
-  recipient_id INTEGER NOT NULL,
-  recipient_type TEXT NOT NULL DEFAULT 'employee',
-  alert_type TEXT NOT NULL DEFAULT 'missing_items',
-  missing_items TEXT DEFAULT '[]',
-  message TEXT,
-  phone_number TEXT NOT NULL,
-  alert_sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  reminder_sent_at DATETIME,
-  is_completed INTEGER DEFAULT 0,
-  completed_at DATETIME,
-  created_by INTEGER NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
-  FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES users(id)
-)`);
-
-db.exec(`CREATE TABLE IF NOT EXISTS attendance (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  date TEXT NOT NULL,
-  check_in DATETIME,
-  check_in_lat REAL,
-  check_in_lng REAL,
-  check_in_address TEXT,
-  check_out DATETIME,
-  check_out_lat REAL,
-  check_out_lng REAL,
-  check_out_address TEXT,
-  notes TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-)`);
-
-// ===== Migration: commission_amount on requests =====
-try { db.exec('ALTER TABLE requests ADD COLUMN commission_amount REAL DEFAULT 0'); } catch(e) {}
-
-db.exec(`CREATE TABLE IF NOT EXISTS targets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  month TEXT NOT NULL,
-  target_requests INTEGER DEFAULT 0,
-  target_approved INTEGER DEFAULT 0,
-  target_revenue REAL DEFAULT 0,
-  created_by INTEGER,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, month),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-)`);
-
-// Default settings
-const defaultSettings = [
-  ['ai_provider', 'openai'],
-  ['ai_model', 'gpt-4o'],
-  ['ai_api_key', ''],
-  ['platform_name', 'منصة جنان بيز حلول الأعمال'],
-  ['admin_whatsapp', ''],
-];
-const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
-for (const [key, value] of defaultSettings) {
-  insertSetting.run(key, value);
+// Convert ? placeholders -> $1, $2, ... for PostgreSQL
+function toPostgresParams(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
 }
 
-// Default permissions list
-const defaultPermissions = [
-  // الطلبات
-  { key: 'view_all_requests',    label: 'عرض جميع الطلبات',          description: 'يستطيع رؤية طلبات جميع الموظفين والشركاء',       category: 'الطلبات' },
-  { key: 'update_request_status',label: 'تحديث حالة الطلبات',         description: 'يستطيع تغيير حالة أي طلب',                      category: 'الطلبات' },
-  { key: 'send_missing_docs',    label: 'إرسال نواقص للموظف',         description: 'يستطيع طلب مستندات ناقصة من الموظف',            category: 'الطلبات' },
-  // الإرسال
-  { key: 'send_to_funding',      label: 'إرسال الملف للجهة التمويلية', description: 'يظهر له زر الإرسال عبر واتساب للجهة التمويلية', category: 'الإرسال' },
-  { key: 'send_to_employee',     label: 'التواصل مع الموظف بالواتساب', description: 'يستطيع الضغط على زر واتساب الموظف',            category: 'الإرسال' },
-  // المستخدمون
-  { key: 'approve_users',        label: 'الموافقة على المستخدمين',     description: 'يستطيع تفعيل أو حظر المستخدمين الجدد',         category: 'المستخدمون' },
-  // الجهات التمويلية
-  { key: 'manage_funding',       label: 'إدارة الجهات التمويلية',      description: 'يستطيع إضافة وتعديل وحذف الجهات التمويلية',    category: 'الجهات التمويلية' },
-  // الإعدادات
-  { key: 'manage_settings',      label: 'الوصول للإعدادات',            description: 'يستطيع تعديل إعدادات المنصة والذكاء الاصطناعي', category: 'الإعدادات' },
-];
-
-const insertPerm = db.prepare('INSERT OR IGNORE INTO permissions (key, label, description, category) VALUES (?, ?, ?, ?)');
-for (const p of defaultPermissions) {
-  insertPerm.run(p.key, p.label, p.description, p.category);
+// Flatten spread arguments (handles .all(id, ...arrayParam) pattern)
+function flatArgs(args) {
+  const out = [];
+  for (const a of args) {
+    if (Array.isArray(a)) out.push(...a);
+    else if (a !== undefined) out.push(a);
+  }
+  return out;
 }
 
-// Default admin
-const adminExists = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
-if (!adminExists) {
-  const hashed = bcrypt.hashSync('Admin@12345', 12);
-  db.prepare(`
-    INSERT INTO users (name, email, password, role, status)
-    VALUES ('المدير الرئيسي', 'admin@weseet.com', ?, 'admin', 'approved')
-  `).run(hashed);
-  console.log('✅ حساب الأدمن: admin@weseet.com | Admin@12345');
-}
+const db = {
+  query: (sql, params) => pool.query(sql, params),
 
-// Default funding entities
-const defaultEntities = [
-  { name: 'مصرف الراجحي', priority: 1, product_types: '["نقاط بيع", "كاش", "أسطول", "إقرارات ضريبية"]', whatsapp_number: '' },
-  { name: 'أمكان', priority: 2, product_types: '["نقاط بيع"]', whatsapp_number: '' },
-  { name: 'شركة الأولى للتمويل', priority: 3, product_types: '["نقاط بيع", "كاش", "أسطول"]', whatsapp_number: '' },
-  { name: 'شركة تأجير', priority: 4, product_types: '["كاش"]', whatsapp_number: '' },
-  { name: 'بنك ساب', priority: 5, product_types: '["فواتير"]', whatsapp_number: '' },
-  { name: 'شركة التنمية المالية', priority: 6, product_types: '["نقاط بيع", "فواتير"]', whatsapp_number: '' },
-  { name: 'شركة كابيتال المالية', priority: 7, product_types: '["كاش", "رهن عقاري", "دعم مشاريع مطورين"]', whatsapp_number: '' }
-];
+  prepare(sql) {
+    const pgSQL = toPostgresParams(sql);
+    const isInsert = pgSQL.trim().toUpperCase().startsWith('INSERT');
+    return {
+      all: async (...args) => {
+        const params = flatArgs(args);
+        const res = await pool.query(pgSQL, params.length ? params : undefined);
+        return res.rows;
+      },
+      get: async (...args) => {
+        const params = flatArgs(args);
+        const res = await pool.query(pgSQL, params.length ? params : undefined);
+        return res.rows[0] || null;
+      },
+      run: async (...args) => {
+        const params = flatArgs(args);
+        let finalSQL = pgSQL;
+        if (isInsert && !pgSQL.toUpperCase().includes('RETURNING')) {
+          finalSQL += ' RETURNING id';
+        }
+        const res = await pool.query(finalSQL, params.length ? params : undefined);
+        return {
+          lastInsertRowid: res.rows[0]?.id ?? null,
+          changes: res.rowCount
+        };
+      }
+    };
+  }
+};
 
-// Clean up duplicates - keep only one instance per entity name
-const allEntities = db.prepare('SELECT DISTINCT name FROM funding_entities').all();
-for (const entity of allEntities) {
-  const records = db.prepare('SELECT id FROM funding_entities WHERE name = ? ORDER BY id DESC').all(entity.name);
-  // Keep the first (latest) one, delete the rest
-  if (records.length > 1) {
-    for (let i = 1; i < records.length; i++) {
-      db.prepare('DELETE FROM funding_entities WHERE id = ?').run(records[i].id);
+// ========== DATABASE INITIALIZATION ==========
+async function initDatabase() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'employee',
+    partner_type TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    phone TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS permissions (
+    id SERIAL PRIMARY KEY,
+    key TEXT UNIQUE NOT NULL,
+    label TEXT NOT NULL,
+    description TEXT,
+    category TEXT DEFAULT 'عام',
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS user_permissions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    permission_key TEXT NOT NULL,
+    granted_by INTEGER NOT NULL,
+    granted_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, permission_key)
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS funding_entities (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    priority INTEGER DEFAULT 0,
+    min_pos_amount REAL DEFAULT 0,
+    min_deposit_amount REAL DEFAULT 0,
+    min_transfer_amount REAL DEFAULT 0,
+    min_deposit_transfer_amount REAL DEFAULT 0,
+    min_months INTEGER DEFAULT 6,
+    product_types TEXT DEFAULT '[]',
+    required_documents TEXT DEFAULT '[]',
+    notes TEXT,
+    whatsapp_number TEXT,
+    additional_whatsapp_numbers TEXT DEFAULT '[]',
+    is_active INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS funding_entity_contacts (
+    id SERIAL PRIMARY KEY,
+    funding_entity_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    phone TEXT,
+    product_types TEXT DEFAULT '[]',
+    notes TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS requests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    company_name TEXT NOT NULL,
+    owner_name TEXT,
+    owner_phone TEXT,
+    entity_type TEXT NOT NULL DEFAULT 'شركة',
+    ownership_type TEXT DEFAULT 'سعودي',
+    funding_type TEXT DEFAULT 'نقاط بيع',
+    owners_count TEXT DEFAULT 'شخص واحد',
+    status TEXT NOT NULL DEFAULT 'draft',
+    rejection_reason TEXT,
+    funding_entity_id INTEGER,
+    analysis_result TEXT DEFAULT '{}',
+    total_pos REAL DEFAULT 0,
+    total_deposit REAL DEFAULT 0,
+    total_transfer REAL DEFAULT 0,
+    statement_months INTEGER DEFAULT 0,
+    notes TEXT,
+    commission_amount REAL DEFAULT 0,
+    referred_by_id INTEGER,
+    complete_file_path TEXT,
+    complete_file_name TEXT,
+    delete_reason TEXT,
+    consultation_contract_path TEXT,
+    consultation_contract_name TEXT,
+    funding_contract_path TEXT,
+    funding_contract_name TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS companies (
+    id SERIAL PRIMARY KEY,
+    company_name TEXT NOT NULL,
+    entity_type TEXT DEFAULT 'شركة',
+    owner_name TEXT,
+    owner_phone TEXT,
+    request_id INTEGER,
+    user_id INTEGER,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS bank_statements (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    period_label TEXT DEFAULT '',
+    pos_amount REAL DEFAULT 0,
+    deposit_amount REAL DEFAULT 0,
+    transfer_amount REAL DEFAULT 0,
+    analysis_status TEXT DEFAULT 'pending',
+    analysis_data TEXT DEFAULT '{}',
+    uploaded_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS account_statements (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS tax_documents (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS campaigns (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT,
+    image_path TEXT,
+    status TEXT DEFAULT 'draft',
+    sent_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS request_documents (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    document_name TEXT NOT NULL,
+    file_path TEXT,
+    file_name TEXT,
+    expiry_date TEXT,
+    status TEXT DEFAULT 'missing',
+    uploaded_at TIMESTAMP
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS status_history (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    note TEXT,
+    created_by INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS request_messages (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    sender_id INTEGER NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS message_reads (
+    user_id INTEGER NOT NULL,
+    request_id INTEGER NOT NULL,
+    last_read_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (user_id, request_id)
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS missing_items_alerts (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    recipient_id INTEGER NOT NULL,
+    recipient_type TEXT NOT NULL DEFAULT 'employee',
+    alert_type TEXT NOT NULL DEFAULT 'missing_items',
+    missing_items TEXT DEFAULT '[]',
+    message TEXT,
+    phone_number TEXT NOT NULL,
+    alert_sent_at TIMESTAMP DEFAULT NOW(),
+    reminder_sent_at TIMESTAMP,
+    is_completed INTEGER DEFAULT 0,
+    completed_at TIMESTAMP,
+    created_by INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS attendance (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    check_in TIMESTAMP,
+    check_in_lat REAL,
+    check_in_lng REAL,
+    check_in_address TEXT,
+    check_out TIMESTAMP,
+    check_out_lat REAL,
+    check_out_lng REAL,
+    check_out_address TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS targets (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    month TEXT NOT NULL,
+    target_requests INTEGER DEFAULT 0,
+    target_approved INTEGER DEFAULT 0,
+    target_revenue REAL DEFAULT 0,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, month)
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS brokers (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    added_by_id INTEGER NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS contracts (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    contract_type TEXT NOT NULL DEFAULT 'consultation',
+    file_path TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    uploaded_by INTEGER NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  // ===== Seed default settings =====
+  const defaultSettings = [
+    ['ai_provider', 'openai'],
+    ['ai_model', 'gpt-4o'],
+    ['ai_api_key', ''],
+    ['platform_name', 'منصة جنان بيز حلول الأعمال'],
+    ['admin_whatsapp', ''],
+  ];
+  for (const [key, value] of defaultSettings) {
+    await pool.query(
+      'INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING',
+      [key, value]
+    );
+  }
+
+  // ===== Seed default permissions =====
+  const defaultPermissions = [
+    { key: 'view_all_requests',    label: 'عرض جميع الطلبات',           description: 'يستطيع رؤية طلبات جميع الموظفين والشركاء',        category: 'الطلبات' },
+    { key: 'update_request_status',label: 'تحديث حالة الطلبات',          description: 'يستطيع تغيير حالة أي طلب',                       category: 'الطلبات' },
+    { key: 'send_missing_docs',    label: 'إرسال نواقص للموظف',          description: 'يستطيع طلب مستندات ناقصة من الموظف',             category: 'الطلبات' },
+    { key: 'send_to_funding',      label: 'إرسال الملف للجهة التمويلية', description: 'يظهر له زر الإرسال عبر واتساب للجهة التمويلية',  category: 'الإرسال' },
+    { key: 'send_to_employee',     label: 'التواصل مع الموظف بالواتساب', description: 'يستطيع الضغط على زر واتساب الموظف',             category: 'الإرسال' },
+    { key: 'approve_users',        label: 'الموافقة على المستخدمين',      description: 'يستطيع تفعيل أو حظر المستخدمين الجدد',          category: 'المستخدمون' },
+    { key: 'manage_funding',       label: 'إدارة الجهات التمويلية',       description: 'يستطيع إضافة وتعديل وحذف الجهات التمويلية',     category: 'الجهات التمويلية' },
+    { key: 'manage_settings',      label: 'الوصول للإعدادات',             description: 'يستطيع تعديل إعدادات المنصة والذكاء الاصطناعي', category: 'الإعدادات' },
+  ];
+  for (const p of defaultPermissions) {
+    await pool.query(
+      'INSERT INTO permissions (key, label, description, category) VALUES ($1, $2, $3, $4) ON CONFLICT (key) DO NOTHING',
+      [p.key, p.label, p.description, p.category]
+    );
+  }
+
+  // ===== Seed default admin user =====
+  const adminCheck = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+  if (adminCheck.rows.length === 0) {
+    const hashed = await bcrypt.hash('Admin@12345', 12);
+    await pool.query(
+      "INSERT INTO users (name, email, password, role, status) VALUES ($1, $2, $3, 'admin', 'approved')",
+      ['المدير الرئيسي', 'admin@weseet.com', hashed]
+    );
+    console.log('✅ حساب الأدمن: admin@weseet.com | Admin@12345');
+  }
+
+  // ===== Seed default funding entities =====
+  const defaultEntities = [
+    { name: 'مصرف الراجحي',            priority: 1, product_types: '["نقاط بيع", "كاش", "أسطول", "إقرارات ضريبية"]' },
+    { name: 'أمكان',                   priority: 2, product_types: '["نقاط بيع"]' },
+    { name: 'شركة الأولى للتمويل',     priority: 3, product_types: '["نقاط بيع", "كاش", "أسطول"]' },
+    { name: 'شركة تأجير',              priority: 4, product_types: '["كاش"]' },
+    { name: 'بنك ساب',                 priority: 5, product_types: '["فواتير"]' },
+    { name: 'شركة التنمية المالية',    priority: 6, product_types: '["نقاط بيع", "فواتير"]' },
+    { name: 'شركة كابيتال المالية',    priority: 7, product_types: '["كاش", "رهن عقاري", "دعم مشاريع مطورين"]' },
+  ];
+  for (const e of defaultEntities) {
+    const exists = await pool.query('SELECT id FROM funding_entities WHERE name = $1', [e.name]);
+    if (exists.rows.length === 0) {
+      await pool.query(
+        'INSERT INTO funding_entities (name, priority, product_types, min_deposit_transfer_amount, whatsapp_number) VALUES ($1, $2, $3, 0, $4)',
+        [e.name, e.priority, e.product_types, '']
+      );
     }
   }
+
+  console.log('✅ قاعدة بيانات Supabase PostgreSQL جاهزة');
 }
 
-const insertEntity = db.prepare('INSERT OR IGNORE INTO funding_entities (name, priority, product_types, min_deposit_transfer_amount, whatsapp_number) VALUES (?, ?, ?, ?, ?)');
-for (const e of defaultEntities) {
-  insertEntity.run(e.name, e.priority, e.product_types, e.min_deposit_transfer_amount || 0, e.whatsapp_number);
-}
-
-// Brokers table (added by employees)
-db.exec(`CREATE TABLE IF NOT EXISTS brokers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  added_by_id INTEGER NOT NULL,
-  notes TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (added_by_id) REFERENCES users(id) ON DELETE CASCADE
-)`);
-
-// Contracts table (consultation & funding contracts per request)
-db.exec(`CREATE TABLE IF NOT EXISTS contracts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  request_id INTEGER NOT NULL,
-  contract_type TEXT NOT NULL DEFAULT 'consultation',
-  file_path TEXT NOT NULL,
-  file_name TEXT NOT NULL,
-  uploaded_by INTEGER NOT NULL,
-  notes TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
-  FOREIGN KEY (uploaded_by) REFERENCES users(id)
-)`);
-
-// Migrations — add new columns safely (ignored if already exist)
-const migrations = [
-  "ALTER TABLE requests ADD COLUMN referred_by_id INTEGER REFERENCES users(id)",
-  "ALTER TABLE requests ADD COLUMN complete_file_path TEXT",
-  "ALTER TABLE requests ADD COLUMN complete_file_name TEXT",
-  "ALTER TABLE requests ADD COLUMN funding_type TEXT DEFAULT 'نقاط بيع'",
-  "ALTER TABLE funding_entities ADD COLUMN product_types TEXT DEFAULT '[]'",
-  "ALTER TABLE requests ADD COLUMN ownership_type TEXT DEFAULT 'سعودي'",
-  "ALTER TABLE funding_entities ADD COLUMN min_deposit_transfer_amount REAL DEFAULT 0",
-  "ALTER TABLE funding_entities ADD COLUMN additional_whatsapp_numbers TEXT DEFAULT '[]'",
-  "ALTER TABLE requests ADD COLUMN owners_count TEXT DEFAULT 'شخص واحد'",
-  "ALTER TABLE requests ADD COLUMN delete_reason TEXT",
-  "ALTER TABLE requests ADD COLUMN consultation_contract_path TEXT",
-  "ALTER TABLE requests ADD COLUMN consultation_contract_name TEXT",
-  "ALTER TABLE requests ADD COLUMN funding_contract_path TEXT",
-  "ALTER TABLE requests ADD COLUMN funding_contract_name TEXT"
-];
-for (const sql of migrations) {
-  try { db.exec(sql); } catch (_) { /* column already exists */ }
-}
-
+db.initDatabase = initDatabase;
 module.exports = db;

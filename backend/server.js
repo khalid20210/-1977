@@ -5,7 +5,7 @@ const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-require('./database');
+const db = require('./database');
 
 const app = express();
 
@@ -69,6 +69,14 @@ if (fs.existsSync(frontendDist)) {
 }
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 منصة جنان بيز حلول الأعمال تعمل على المنفذ ${PORT}`);
-});
+
+db.initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 منصة جنان بيز حلول الأعمال تعمل على المنفذ ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('❌ فشل الاتصال بقاعدة البيانات:', err.message);
+    process.exit(1);
+  });

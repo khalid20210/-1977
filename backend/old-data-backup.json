@@ -1,0 +1,3197 @@
+{
+  "alembic_version": [
+    {
+      "version_num": "b2c3d4e5f6a7"
+    }
+  ],
+  "audit_log": [
+    {
+      "id": "3b342271-7f78-42a4-9e56-3a185eaad30a",
+      "user_id": null,
+      "user_name": "system",
+      "user_role": "system",
+      "action": "login_failed",
+      "case_id": null,
+      "ip_address": "10.17.199.130",
+      "details": {
+        "phone": "0500000004"
+      },
+      "timestamp": "2026-03-25T17:48:22.954Z"
+    },
+    {
+      "id": "7372b9f5-6555-4608-bfd5-b9c2a26941d2",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.19.78.130",
+      "details": null,
+      "timestamp": "2026-03-25T17:48:49.458Z"
+    },
+    {
+      "id": "cfeaf1e6-d7dc-44d5-8f3b-9a61a9b7f2ce",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.18.110.129",
+      "details": null,
+      "timestamp": "2026-03-25T19:49:02.294Z"
+    },
+    {
+      "id": "ee86f054-279d-4974-90af-3c57691b517b",
+      "user_id": "b5972f33-bf19-49ce-aa59-ae03b256609f",
+      "user_name": "سالم الدوسري",
+      "user_role": "partner",
+      "action": "register",
+      "case_id": null,
+      "ip_address": "10.19.78.130",
+      "details": null,
+      "timestamp": "2026-03-26T21:12:13.397Z"
+    },
+    {
+      "id": "16d2dd4c-bef4-4b2c-8ae3-09dc17ca2f59",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "partner_approved",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "name": "سالم الدوسري",
+        "approved_user_id": "b5972f33-bf19-49ce-aa59-ae03b256609f"
+      },
+      "timestamp": "2026-03-26T22:07:25.047Z"
+    },
+    {
+      "id": "881e3f7c-c015-418f-bc64-ecefafc760be",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.21.37.68",
+      "details": null,
+      "timestamp": "2026-03-27T01:03:17.197Z"
+    },
+    {
+      "id": "b045d2a5-66fa-46d4-80fc-5e0d21a2a3ad",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "is_active": true
+        },
+        "updated_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb"
+      },
+      "timestamp": "2026-03-27T01:07:36.312Z"
+    },
+    {
+      "id": "f9d24736-96f3-4981-ab59-b7eb9f6f7e3e",
+      "user_id": "b5972f33-bf19-49ce-aa59-ae03b256609f",
+      "user_name": "سالم الدوسري",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.18.217.195",
+      "details": null,
+      "timestamp": "2026-03-27T02:42:49.661Z"
+    },
+    {
+      "id": "043b39d0-7c6b-49d2-9640-f068e4356504",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "الراجحي نقاط بيع — عمر ≥24، POS ≥800K (راجحي) أو 2M (خارجي)، النشاط: كل ما عدا الذهب",
+          "entity_name": "مصرف الراجحي",
+          "product_name": "نقاط بيع",
+          "requires_pos": false,
+          "min_pos_other": 2000000,
+          "min_pos_rajhi": 800000,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "صور النشاط (داخل وخارج)",
+            "موقع المنشأة Google Map",
+            "كشف حساب Excel حسب مدة العمر المطلوبة",
+            "ئ"
+          ],
+          "min_age_months": 24,
+          "accepts_foreign": true,
+          "requires_invoices": false
+        },
+        "rule_id": "f8278c0a-7bc9-4b12-93d3-1b0c781c3696"
+      },
+      "timestamp": "2026-03-27T16:22:00.441Z"
+    },
+    {
+      "id": "a8a5e399-3fb6-4a00-8c91-f34ab50f2717",
+      "user_id": "b5972f33-bf19-49ce-aa59-ae03b256609f",
+      "user_name": "سالم الدوسري",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.18.110.129",
+      "details": null,
+      "timestamp": "2026-03-28T00:40:28.473Z"
+    },
+    {
+      "id": "1b3eb59f-be81-4b59-bb84-336b99e58b6e",
+      "user_id": null,
+      "user_name": "system",
+      "user_role": "system",
+      "action": "login_failed",
+      "case_id": null,
+      "ip_address": "10.21.37.68",
+      "details": {
+        "phone": "0569202920"
+      },
+      "timestamp": "2026-03-30T09:40:49.710Z"
+    },
+    {
+      "id": "071cf699-975c-46d9-8456-c0ca5004c957",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "الراجحي أسطول — عمر ≥24، تقييم عبر كشف الحساب والمستندات، لا يشترط إقرارات",
+          "entity_name": "مصرف الراجحي",
+          "product_name": "أسطول",
+          "requires_pos": false,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "صور النشاط (داخل وخارج)",
+            "موقع المنشأة Google Map",
+            "كشف حساب Excel حسب مدة العمر المطلوبة"
+          ],
+          "min_age_months": 24,
+          "accepts_foreign": true,
+          "min_total_revenue": 2000000,
+          "requires_invoices": false
+        },
+        "rule_id": "de09167b-5500-4e0c-b66e-26f02fd9a4b0"
+      },
+      "timestamp": "2026-03-30T09:45:03.146Z"
+    },
+    {
+      "id": "de1f8227-7d41-4f0d-9cb2-6eac7f8f556b",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "الراجحي كاش — عمر ≥24 شهر للمنشات السعوديه و36 شهر للشركات الاجنبيه، إيداعات ≥5M، \nإقرارات ضريبية لآخر 3 سنوات( تمويل للمنشاءت ايداع وتحويل ) اما تمويل نقاط او اسطول مايلزم الاقرارات",
+          "entity_name": "مصرف الراجحي",
+          "product_name": "كاش",
+          "requires_pos": true,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "صور النشاط (داخل وخارج)",
+            "موقع المنشأة Google Map",
+            "كشوفات حساب اخر 12 شهر اكسل و pdf وكشف حساب اخر 3 شهور مختوم اول واخر 5 اوراق اذا بنك غير الراجحي",
+            "إقرارات ضريبية لآخر 3 سنوات اذا كان حركه الحساب ايداع وتحويل",
+            "الترخيص الاستثماري اذا شركه اجنبيه",
+            "صوره الهويه واضح تاريخ انتهاء الاقامه للمستثمرين"
+          ],
+          "min_age_months": 2,
+          "accepts_foreign": true,
+          "min_total_revenue": 1200000,
+          "requires_invoices": false
+        },
+        "rule_id": "410d39b1-abf1-4a9f-9937-590067b329c0"
+      },
+      "timestamp": "2026-03-30T09:53:08.794Z"
+    },
+    {
+      "id": "cc38668a-de15-4e4d-ab23-75e0b960593b",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "الراجحي كاش — عمر ≥24 شهر للمنشات السعوديه و36 شهر للشركات الاجنبيه، إيداعات ≥5M، \nإقرارات ضريبية لآخر 3 سنوات",
+          "entity_name": "مصرف الراجحي",
+          "product_name": "كاش",
+          "requires_pos": true,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "صور النشاط (داخل وخارج)",
+            "موقع المنشأة Google Map",
+            "كشوفات حساب اخر 12 شهر اكسل و pdf وكشف حساب اخر 3 شهور مختوم اول واخر 5 اوراق اذا بنك غير الراجحي",
+            "إقرارات ضريبية لآخر 3 سنوات اذا كان حركه الحساب ايداع وتحويل",
+            "الترخيص الاستثماري اذا شركه اجنبيه",
+            "صوره الهويه واضح تاريخ انتهاء الاقامه للمستثمرين"
+          ],
+          "min_age_months": 2,
+          "accepts_foreign": true,
+          "min_total_revenue": 1200000,
+          "requires_invoices": false,
+          "min_total_deposits": 5000000
+        },
+        "rule_id": "410d39b1-abf1-4a9f-9937-590067b329c0"
+      },
+      "timestamp": "2026-03-30T09:54:28.080Z"
+    },
+    {
+      "id": "3987e5fa-df13-4bdb-9b5f-2e97c8caf4ba",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "إمكان — عمر ≥7 اشهر الى 23 شهر  مؤسسة/شخص واحد، سعودي فقط، يتطلب POS ≥800K (راجحي) \nتمويل نقاط بيع \nوقريبا اقرارات ضريبيه\nمنشاءت سعوديه فقط",
+          "entity_name": "إمكان",
+          "max_partners": 1,
+          "product_name": "نقاط بيع",
+          "requires_pos": true,
+          "min_pos_other": 2000000,
+          "min_pos_rajhi": 800000,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والمالك",
+            "صور النشاط (داخل وخارج)",
+            "شهادة الآيبان بالباركود",
+            "كشف حساب Excel حسب مدة العمر المطلوبة"
+          ],
+          "min_age_months": 6,
+          "accepts_foreign": false,
+          "requires_invoices": false
+        },
+        "rule_id": "e2f805d8-ba93-402f-8e59-d49d3fcef55d"
+      },
+      "timestamp": "2026-03-30T09:56:54.490Z"
+    },
+    {
+      "id": "b534333e-d4bc-4a4e-8a38-f75f2579fd74",
+      "user_id": null,
+      "user_name": "system",
+      "user_role": "system",
+      "action": "login_failed",
+      "case_id": null,
+      "ip_address": "10.20.131.236",
+      "details": {
+        "phone": "050000003"
+      },
+      "timestamp": "2026-03-21T05:31:19.888Z"
+    },
+    {
+      "id": "336c6a53-45eb-4564-8bba-1c9012e9e6fd",
+      "user_id": null,
+      "user_name": "system",
+      "user_role": "system",
+      "action": "login_failed",
+      "case_id": null,
+      "ip_address": "10.18.67.29",
+      "details": {
+        "phone": "050000003"
+      },
+      "timestamp": "2026-03-21T05:32:01.740Z"
+    },
+    {
+      "id": "f369dbd0-8422-43fa-b066-853cd2a3662c",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.21.37.68",
+      "details": null,
+      "timestamp": "2026-03-25T19:41:35.735Z"
+    },
+    {
+      "id": "b3a197f9-805c-452c-a2ab-67b94bda0151",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.20.56.131",
+      "details": null,
+      "timestamp": "2026-03-25T19:54:42.288Z"
+    },
+    {
+      "id": "07abecb5-752b-42f7-8fcb-1ab204987036",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.18.110.129",
+      "details": null,
+      "timestamp": "2026-03-26T22:05:49.302Z"
+    },
+    {
+      "id": "beb835c5-cae3-46c9-80f1-ca8301cf0523",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "name": "سالم الدوسري",
+          "role": "employee",
+          "phone": "0595288084"
+        },
+        "updated_user_id": "b5972f33-bf19-49ce-aa59-ae03b256609f"
+      },
+      "timestamp": "2026-03-26T22:07:58.117Z"
+    },
+    {
+      "id": "ad6ad6b6-6032-409a-b631-4ca438cc5bbf",
+      "user_id": "b5972f33-bf19-49ce-aa59-ae03b256609f",
+      "user_name": "سالم الدوسري",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.19.78.130",
+      "details": null,
+      "timestamp": "2026-03-26T22:11:09.602Z"
+    },
+    {
+      "id": "93764db1-bce3-403c-b06c-633009a9e72f",
+      "user_id": null,
+      "user_name": "system",
+      "user_role": "system",
+      "action": "login_failed",
+      "case_id": null,
+      "ip_address": "10.18.110.129",
+      "details": {
+        "phone": "0507309723"
+      },
+      "timestamp": "2026-03-27T01:03:14.096Z"
+    },
+    {
+      "id": "062576c6-97e2-4db6-b372-0204aa771d6e",
+      "user_id": null,
+      "user_name": "system",
+      "user_role": "system",
+      "action": "login_failed",
+      "case_id": null,
+      "ip_address": "10.18.110.129",
+      "details": {
+        "phone": "0507309723"
+      },
+      "timestamp": "2026-03-27T01:04:33.874Z"
+    },
+    {
+      "id": "59cc4ac6-ff54-4522-bba4-558d0ba7a86f",
+      "user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+      "user_name": "المطري",
+      "user_role": "partner",
+      "action": "register",
+      "case_id": null,
+      "ip_address": "10.19.78.130",
+      "details": null,
+      "timestamp": "2026-03-27T01:06:28.038Z"
+    },
+    {
+      "id": "2a9e1054-b22d-4896-8c41-09b92bb9859d",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "name": "المطري",
+          "role": "employee",
+          "phone": "0507309723"
+        },
+        "updated_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb"
+      },
+      "timestamp": "2026-03-27T01:07:23.222Z"
+    },
+    {
+      "id": "22be71f7-e06b-4a58-8b4b-f6788158e5dd",
+      "user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+      "user_name": "المطري",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.18.110.129",
+      "details": null,
+      "timestamp": "2026-03-27T01:08:29.089Z"
+    },
+    {
+      "id": "22cb82bd-274b-4f25-99bc-2e0aab56da90",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.18.110.129",
+      "details": null,
+      "timestamp": "2026-03-27T14:18:58.411Z"
+    },
+    {
+      "id": "fd2210c2-d6fd-4958-b07c-9c67be2376bd",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.18.110.129",
+      "details": null,
+      "timestamp": "2026-03-30T06:08:33.501Z"
+    },
+    {
+      "id": "416d36ca-e757-4b6e-8fac-92e6e658db71",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.22.190.8",
+      "details": null,
+      "timestamp": "2026-03-30T09:41:06.500Z"
+    },
+    {
+      "id": "47b2701e-78f9-4f16-896f-14e0ed0b503a",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "إمكان — عمر ≥7 اشهر الى 23 شهر  مؤسسة/شخص واحد، سعودي فقط، يتطلب POS ≥800K (راجحي) \nتمويل نقاط بيع \nوقريبا اقرارات ضريبيه\nمنشاءت سعوديه فقط",
+          "entity_name": "إمكان",
+          "max_partners": 1,
+          "product_name": "نقاط بيع",
+          "requires_pos": true,
+          "min_pos_other": 2000000,
+          "min_pos_rajhi": 800000,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والمالك",
+            "صور النشاط (داخل وخارج)",
+            "شهادة الآيبان بالباركود"
+          ],
+          "min_age_months": 6,
+          "accepts_foreign": false,
+          "requires_invoices": false
+        },
+        "rule_id": "e2f805d8-ba93-402f-8e59-d49d3fcef55d"
+      },
+      "timestamp": "2026-03-30T09:57:05.830Z"
+    },
+    {
+      "id": "958711df-b58c-4d17-a3b3-5c1021f4ea61",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "صندوق التنمية — مسار POS — عمر ≥18، إيرادات ≥6M، استقرار إيرادات، إقرارات (6 ربع سنوي أو 15 شهري)\n",
+          "entity_name": "صندوق التنمية",
+          "product_name": "نقاط بيع",
+          "requires_pos": true,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة الزكاة والدخل",
+            "شهادة القيمة المضافة",
+            "شهادة التأمينات الاجتماعية",
+            "العنوان الوطني",
+            "شهادة الآيبان",
+            "كشف حساب Excel حسب المدة المطلوبة",
+            "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+            "القوائم المالية (داخلية للمؤسسة / معتمدة للشركة) اخر سنتين",
+            "الترخيص الاستثماري اذا شركه اجنبيه",
+            "صوره الاقامه متضمنه تاريخ الانتهاء من ابشر"
+          ],
+          "min_age_months": 18,
+          "accepts_foreign": true,
+          "min_total_revenue": 6000000,
+          "requires_invoices": false
+        },
+        "rule_id": "7334e6ed-8719-45ee-be7e-8cd73b46df37"
+      },
+      "timestamp": "2026-03-30T09:59:05.090Z"
+    },
+    {
+      "id": "15e2afc6-71f1-40a8-bcac-ad6a9a85a195",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "صندوق التنمية — مسار فواتير — عمر ≥18، إيرادات ≥6M، استقرار إيرادات، فواتير مبيعات",
+          "entity_name": "صندوق التنمية",
+          "product_name": "فواتير",
+          "requires_pos": false,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة الزكاة والدخل",
+            "شهادة القيمة المضافة",
+            "شهادة التأمينات الاجتماعية",
+            "العنوان الوطني",
+            "شهادة الآيبان",
+            "كشف حساب Excel وpdf اخر 12 شهر ",
+            "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+            "القوائم المالية (داخلية للمؤسسة / معتمدة للشركة)",
+            "ملف/ملفات فواتير المبيعات (Excel/PDF)",
+            "الترخيص الاستثماري للشركات الاجنبيه",
+            "صوره الاقامه من ابشر بتاريخ الانتهاء"
+          ],
+          "min_age_months": 18,
+          "accepts_foreign": true,
+          "min_total_revenue": 6000000,
+          "requires_invoices": false
+        },
+        "rule_id": "de1cc479-e59c-4916-8acb-956975c05da9"
+      },
+      "timestamp": "2026-03-30T10:00:27.120Z"
+    },
+    {
+      "id": "7ea5a56d-1f46-4b09-b5a6-0fddfad6b4b1",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "أملاك — عمر ≥24، إيرادات ≥7M، صافي ربح ≥8%، قوائم معتمدة إلزامية",
+          "entity_name": "أملاك",
+          "product_name": "تمويل أملاك",
+          "requires_pos": false,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "الترخيص الاستثماري (إن كانت شركة استثمارية)",
+            "شهادة البلدية",
+            "شهادة الزكاة والدخل",
+            "شهادة القيمة المضافة",
+            "شهادة التأمينات الاجتماعية",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "القوائم المالية المعتمدة (إلزامي)",
+            "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+            "كشف حساب Excel لآخر 12 شهر",
+            "العقود (إن وجدت)"
+          ],
+          "min_age_months": 24,
+          "accepts_foreign": true,
+          "min_total_revenue": 7000000,
+          "requires_invoices": false
+        },
+        "rule_id": "d7df9936-c89e-49a6-a258-4a1e161adac6"
+      },
+      "timestamp": "2026-03-30T10:02:05.393Z"
+    },
+    {
+      "id": "db6890ed-3d97-4b92-ad61-be10d49ba6b4",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+        "new_extra_permissions": [
+          "add_users"
+        ],
+        "old_extra_permissions": []
+      },
+      "timestamp": "2026-03-30T10:47:41.184Z"
+    },
+    {
+      "id": "cec08325-6b9c-4dcb-99f0-a0b79b32e53b",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.16.147.67",
+      "details": null,
+      "timestamp": "2026-03-25T09:25:22.612Z"
+    },
+    {
+      "id": "b8982212-4254-4b6c-977e-88e8042f175f",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.20.87.68",
+      "details": null,
+      "timestamp": "2026-03-25T09:25:40.108Z"
+    },
+    {
+      "id": "671e5408-528b-4e1f-bb33-7d85a42608ba",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_created",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "role": "employee",
+        "new_user_id": "20be37cb-be73-4d9d-8c81-ebddd47eeed7"
+      },
+      "timestamp": "2026-03-30T10:49:00.591Z"
+    },
+    {
+      "id": "305c811b-9142-4723-9c22-c539bcd63a8c",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.20.131.236",
+      "details": null,
+      "timestamp": "2026-03-25T11:10:57.000Z"
+    },
+    {
+      "id": "f4ce467f-a8ff-4bd7-8cd9-88bc9f225460",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "سهل — نفس شروط أملاك تمامًا (عمر ≥24، إيرادات ≥7M، صافي ربح ≥8%، قوائم معتمدة إلزامية)",
+          "entity_name": "سهل",
+          "product_name": "تمويل سهل",
+          "requires_pos": false,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "الترخيص الاستثماري (إن كانت شركة استثمارية)",
+            "شهادة البلدية",
+            "شهادة الزكاة والدخل",
+            "شهادة القيمة المضافة",
+            "شهادة التأمينات الاجتماعية",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "القوائم المالية المعتمدة (إلزامي)",
+            "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+            "كشف حساب Excel لآخر 12 شهر",
+            "العقود (إن وجدت)"
+          ],
+          "min_age_months": 24,
+          "accepts_foreign": false,
+          "min_total_revenue": 7000000,
+          "requires_invoices": false
+        },
+        "rule_id": "bef90cca-b29e-4b5f-a37a-20e8c96d8aeb"
+      },
+      "timestamp": "2026-03-30T10:02:16.739Z"
+    },
+    {
+      "id": "f1b8192b-7f46-43a7-b3ce-47b4aff02557",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "الراجحي كاش — عمر ≥24 شهر للمنشات السعوديه و36 شهر للشركات الاجنبيه، إيداعات ≥5M، \nإقرارات ضريبية لآخر 3 سنوات",
+          "entity_name": "مصرف الراجحي",
+          "product_name": "اسطول",
+          "requires_pos": true,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "صور النشاط (داخل وخارج)",
+            "موقع المنشأة Google Map",
+            "كشوفات حساب اخر 12 شهر اكسل و pdf وكشف حساب اخر 3 شهور مختوم اول واخر 5 اوراق اذا بنك غير الراجحي",
+            "إقرارات ضريبية لآخر 3 سنوات اذا كان حركه الحساب ايداع وتحويل",
+            "الترخيص الاستثماري اذا شركه اجنبيه",
+            "صوره الهويه واضح تاريخ انتهاء الاقامه للمستثمرين"
+          ],
+          "min_age_months": 2,
+          "accepts_foreign": true,
+          "min_total_revenue": 1200000,
+          "requires_invoices": false,
+          "min_total_deposits": 5000000
+        },
+        "rule_id": "410d39b1-abf1-4a9f-9937-590067b329c0"
+      },
+      "timestamp": "2026-03-30T10:07:10.681Z"
+    },
+    {
+      "id": "d97012f7-3456-46b6-a3b5-2ca88c4a0d4d",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "الراجحي كاش — عمر ≥24 شهر للمنشات السعوديه و36 شهر للشركات الاجنبيه، إيداعات ≥5M، \nإقرارات ضريبية لآخر 3 سنوات",
+          "entity_name": "مصرف الراجحي",
+          "product_name": "كاش",
+          "requires_pos": true,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "صور النشاط (داخل وخارج)",
+            "موقع المنشأة Google Map",
+            "كشوفات حساب اخر 12 شهر اكسل و pdf وكشف حساب اخر 3 شهور مختوم اول واخر 5 اوراق اذا بنك غير الراجحي",
+            "إقرارات ضريبية لآخر 3 سنوات اذا كان حركه الحساب ايداع وتحويل",
+            "الترخيص الاستثماري اذا شركه اجنبيه",
+            "صوره الهويه واضح تاريخ انتهاء الاقامه للمستثمرين"
+          ],
+          "min_age_months": 2,
+          "accepts_foreign": true,
+          "min_total_revenue": 1200000,
+          "requires_invoices": false,
+          "min_total_deposits": 5000000
+        },
+        "rule_id": "410d39b1-abf1-4a9f-9937-590067b329c0"
+      },
+      "timestamp": "2026-03-30T10:07:21.819Z"
+    },
+    {
+      "id": "69b66600-8db9-4098-8ab0-811363307c32",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "صندوق التنمية — مسار فواتير — عمر ≥18، إيرادات ≥6M، استقرار إيرادات، فواتير مبيعات",
+          "entity_name": "صندوق التنمية",
+          "product_name": "فواتير",
+          "requires_pos": false,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة الزكاة والدخل",
+            "شهادة القيمة المضافة",
+            "شهادة التأمينات الاجتماعية",
+            "العنوان الوطني",
+            "شهادة الآيبان",
+            "كشف حساب Excel وpdf اخر 12 شهر ",
+            "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+            "القوائم المالية (داخلية للمؤسسة / معتمدة للشركة)",
+            "ملف/ملفات فواتير المبيعات (Excel/PDF)",
+            "الترخيص الاستثماري للشركات الاجنبيه",
+            "صوره الاقامه من ابشر بتاريخ الانتهاء"
+          ],
+          "facility_types": [
+            "cash"
+          ],
+          "min_age_months": 18,
+          "accepts_foreign": true,
+          "min_total_revenue": 6000000,
+          "requires_invoices": false
+        },
+        "rule_id": "de1cc479-e59c-4916-8acb-956975c05da9"
+      },
+      "timestamp": "2026-03-30T10:20:23.898Z"
+    },
+    {
+      "id": "3630896b-9768-44e0-869b-ab21ed77bc12",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "20be37cb-be73-4d9d-8c81-ebddd47eeed7",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "manage_permissions",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ],
+        "old_extra_permissions": []
+      },
+      "timestamp": "2026-03-30T10:49:59.179Z"
+    },
+    {
+      "id": "2aede11e-5248-47f2-b977-8a5ab181ef3f",
+      "user_id": null,
+      "user_name": "system",
+      "user_role": "system",
+      "action": "login_failed",
+      "case_id": null,
+      "ip_address": "10.19.78.130",
+      "details": {
+        "phone": "0500000001"
+      },
+      "timestamp": "2026-03-30T11:12:11.049Z"
+    },
+    {
+      "id": "8eccda0b-2cbe-4fd8-8c09-0e5f32a3b384",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.17.199.130",
+      "details": null,
+      "timestamp": "2026-03-30T11:12:27.682Z"
+    },
+    {
+      "id": "48e9fbba-afda-402e-a499-383e80cb6f02",
+      "user_id": null,
+      "user_name": "system",
+      "user_role": "system",
+      "action": "login_failed",
+      "case_id": null,
+      "ip_address": "10.16.254.2",
+      "details": {
+        "phone": "0500000001"
+      },
+      "timestamp": "2026-03-30T11:12:38.845Z"
+    },
+    {
+      "id": "ed295f06-5839-4b16-b9c5-688d8f56cf3c",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.22.190.8",
+      "details": null,
+      "timestamp": "2026-03-30T11:15:25.892Z"
+    },
+    {
+      "id": "dbffb93b-d048-49c6-9a75-2dd06136f0b5",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_created",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "role": "employee",
+        "new_user_id": "4989e629-2ec6-4b81-922d-190459cdd982"
+      },
+      "timestamp": "2026-03-30T11:16:46.521Z"
+    },
+    {
+      "id": "e60eb3b8-ef66-4fec-bc43-8867c694cf3d",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "manage_permissions",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ],
+        "old_extra_permissions": []
+      },
+      "timestamp": "2026-03-30T11:17:07.986Z"
+    },
+    {
+      "id": "12288768-9a1f-4eb0-936b-e716a22cd7e1",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.22.190.8",
+      "details": null,
+      "timestamp": "2026-03-30T11:17:22.380Z"
+    },
+    {
+      "id": "399217c2-d0fd-41b9-b0a7-26f0e5a47276",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.17.199.130",
+      "details": null,
+      "timestamp": "2026-03-30T22:29:04.925Z"
+    },
+    {
+      "id": "9af1f970-fbff-4211-814d-6b3c76c48aa8",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.21.37.68",
+      "details": null,
+      "timestamp": "2026-03-30T23:42:43.836Z"
+    },
+    {
+      "id": "c6adbb40-16b2-4d3c-8ba9-de04416a94a4",
+      "user_id": "7adfeff4-aabd-48cb-b4a1-013f69e1549b",
+      "user_name": "تاتا",
+      "user_role": "partner",
+      "action": "register",
+      "case_id": null,
+      "ip_address": "10.18.113.132",
+      "details": null,
+      "timestamp": "2026-03-30T23:44:01.897Z"
+    },
+    {
+      "id": "83a49dcf-8d95-4bf7-9e55-d606cf7c78cd",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [],
+        "old_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "manage_permissions",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ]
+      },
+      "timestamp": "2026-03-30T23:45:46.175Z"
+    },
+    {
+      "id": "ee7f0a81-8f4d-45ca-83ee-4496426f3ab1",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.17.199.130",
+      "details": null,
+      "timestamp": "2026-03-30T23:45:56.033Z"
+    },
+    {
+      "id": "cf7debc8-ead9-457d-a7df-14a5da2c045c",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "manage_permissions",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ],
+        "old_extra_permissions": []
+      },
+      "timestamp": "2026-03-30T23:46:13.682Z"
+    },
+    {
+      "id": "9583fced-fdc1-4ef4-934a-ad9e6257119b",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.19.78.130",
+      "details": null,
+      "timestamp": "2026-03-31T00:46:17.401Z"
+    },
+    {
+      "id": "a81a1afe-30be-4723-a86a-1b66f0f008bb",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.16.254.2",
+      "details": null,
+      "timestamp": "2026-03-31T00:47:07.593Z"
+    },
+    {
+      "id": "d5a04d28-27cc-4972-83a2-67a37ebad3d1",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+        "new_extra_permissions": [],
+        "old_extra_permissions": [
+          "add_users"
+        ]
+      },
+      "timestamp": "2026-03-31T00:47:34.116Z"
+    },
+    {
+      "id": "0b375c14-efc9-44e3-bb10-74e62c8a0fd9",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ],
+        "old_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "manage_permissions",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ]
+      },
+      "timestamp": "2026-03-31T00:47:41.808Z"
+    },
+    {
+      "id": "bbbb8c13-e005-49ea-83de-86a0f937077a",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics",
+          "manage_permissions"
+        ],
+        "old_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ]
+      },
+      "timestamp": "2026-03-31T00:48:13.392Z"
+    },
+    {
+      "id": "90f6c85f-9c37-4d24-8390-3324c6d8bac0",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+        "new_extra_permissions": [
+          "approve_partners"
+        ],
+        "old_extra_permissions": []
+      },
+      "timestamp": "2026-03-31T00:56:22.098Z"
+    },
+    {
+      "id": "46fc23c2-ec38-4d45-8bf9-8188eef45c65",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+        "new_extra_permissions": [],
+        "old_extra_permissions": [
+          "approve_partners"
+        ]
+      },
+      "timestamp": "2026-03-31T00:56:28.553Z"
+    },
+    {
+      "id": "8741291e-cad7-4a50-b5ba-f69700aa4534",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ],
+        "old_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics",
+          "manage_permissions"
+        ]
+      },
+      "timestamp": "2026-03-31T00:56:37.157Z"
+    },
+    {
+      "id": "127c6f9b-7571-4fe6-977d-4ab58d6d06de",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics",
+          "manage_permissions"
+        ],
+        "old_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ]
+      },
+      "timestamp": "2026-03-31T00:56:54.691Z"
+    },
+    {
+      "id": "5680a4e0-fdac-4803-9ace-d226f186793a",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics",
+          "manage_permissions"
+        ],
+        "old_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics",
+          "manage_permissions"
+        ]
+      },
+      "timestamp": "2026-03-31T00:56:57.569Z"
+    },
+    {
+      "id": "145a7ad9-b912-49f1-a751-920a9dd491a1",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.23.88.130",
+      "details": null,
+      "timestamp": "2026-04-05T21:13:09.654Z"
+    },
+    {
+      "id": "4a074bcd-c251-4d19-bd27-625f3fdfe911",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+        "new_extra_permissions": [
+          "approve_partners"
+        ],
+        "old_extra_permissions": []
+      },
+      "timestamp": "2026-03-31T00:57:03.809Z"
+    },
+    {
+      "id": "53d1cd64-ee18-4581-bb75-11209c37e9c7",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+        "new_extra_permissions": [],
+        "old_extra_permissions": [
+          "approve_partners"
+        ]
+      },
+      "timestamp": "2026-03-31T00:57:10.739Z"
+    },
+    {
+      "id": "3aec093c-9a4f-4150-9a08-29da56baa28e",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [],
+        "old_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "view_employee_files",
+          "assign_cases",
+          "view_all_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics",
+          "manage_permissions"
+        ]
+      },
+      "timestamp": "2026-03-31T00:58:55.500Z"
+    },
+    {
+      "id": "3099728e-a1ad-439d-962f-a49912058e5c",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "manage_permissions",
+          "view_employee_files",
+          "view_all_cases",
+          "assign_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ],
+        "old_extra_permissions": []
+      },
+      "timestamp": "2026-03-31T01:44:15.851Z"
+    },
+    {
+      "id": "c0d4436f-a281-436b-bfad-70a7f02d7942",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "partner_approved",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "name": "تاتا",
+        "approved_user_id": "7adfeff4-aabd-48cb-b4a1-013f69e1549b"
+      },
+      "timestamp": "2026-03-31T02:45:26.227Z"
+    },
+    {
+      "id": "25798fbf-e917-420a-b65a-77b08c9e9dd5",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.16.254.2",
+      "details": null,
+      "timestamp": "2026-03-31T02:52:44.611Z"
+    },
+    {
+      "id": "f3e0aab1-e84f-4315-bf20-25b97f385358",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.27.203.4",
+      "details": {
+        "phone": "0569202920",
+        "action": "otp_sent"
+      },
+      "timestamp": "2026-04-05T08:56:10.039Z"
+    },
+    {
+      "id": "9ba11a76-1fc2-4fd8-b181-a9ab98273f18",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.17.180.68",
+      "details": null,
+      "timestamp": "2026-04-05T09:01:31.414Z"
+    },
+    {
+      "id": "3ed569a1-a94b-4d6c-9963-c1d909b0ccc1",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.17.180.68",
+      "details": null,
+      "timestamp": "2026-04-05T19:47:30.201Z"
+    },
+    {
+      "id": "107559b1-a5fb-4de9-a7d7-7b0a3571a4b5",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.22.60.66",
+      "details": null,
+      "timestamp": "2026-04-05T20:38:15.179Z"
+    },
+    {
+      "id": "5b26621b-5580-47da-99d2-7cdde064a9e2",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.22.60.66",
+      "details": null,
+      "timestamp": "2026-04-05T20:40:37.274Z"
+    },
+    {
+      "id": "e7e62d82-f753-4a60-8c9c-62e09e4b16d5",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "toggle",
+        "rule_id": "410d39b1-abf1-4a9f-9937-590067b329c0",
+        "new_status": "معطّلة",
+        "entity_name": "مصرف الراجحي"
+      },
+      "timestamp": "2026-04-05T20:45:00.529Z"
+    },
+    {
+      "id": "f319442e-15a6-4188-b842-aa4f391e1df2",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "toggle",
+        "rule_id": "410d39b1-abf1-4a9f-9937-590067b329c0",
+        "new_status": "مفعّلة",
+        "entity_name": "مصرف الراجحي"
+      },
+      "timestamp": "2026-04-05T20:45:03.513Z"
+    },
+    {
+      "id": "8b56b006-f087-4b99-904a-f940ff557c66",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "الراجحي كاش — عمر ≥24 شهر للمنشات السعوديه و36 شهر للشركات الاجنبيه، إيداعات ≥5M، \nإقرارات ضريبية لآخر 3 سنوات",
+          "entity_name": "مصرف الراجحي",
+          "product_name": "كاش",
+          "requires_pos": true,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "صور النشاط (داخل وخارج)",
+            "موقع المنشأة Google Map",
+            "كشوفات حساب اخر 12 شهر اكسل و pdf وكشف حساب اخر 3 شهور مختوم اول واخر 5 اوراق اذا بنك غير الراجحي",
+            "إقرارات ضريبية لآخر 3 سنوات اذا كان حركه الحساب ايداع وتحويل",
+            "الترخيص الاستثماري اذا شركه اجنبيه",
+            "صوره الهويه واضح تاريخ انتهاء الاقامه للمستثمرين"
+          ],
+          "facility_types": [
+            "cash",
+            "pos",
+            "fleet"
+          ],
+          "min_age_months": 2,
+          "accepts_foreign": true,
+          "min_total_revenue": 1200000,
+          "requires_invoices": false,
+          "min_total_deposits": 5000000
+        },
+        "rule_id": "410d39b1-abf1-4a9f-9937-590067b329c0"
+      },
+      "timestamp": "2026-04-05T20:49:17.421Z"
+    },
+    {
+      "id": "9315d109-2b63-42fb-a6ae-d87f1d9a0aa7",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "entity_rule_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "description": "الراجحي أسطول — عمر ≥24، تقييم عبر كشف الحساب والمستندات، لا يشترط إقرارات",
+          "entity_name": "مصرف الراجحي",
+          "max_partners": 8,
+          "product_name": "أسطول",
+          "requires_pos": false,
+          "min_pos_other": 4433434,
+          "min_pos_rajhi": 655656564,
+          "required_docs": [
+            "صورة السجل التجاري",
+            "صورة الهوية/الإقامة",
+            "عقد التأسيس (إن كانت شركة)",
+            "شهادة البلدية",
+            "شهادة التوطين",
+            "العنوان الوطني للمنشأة والملاك",
+            "شهادة الآيبان بالباركود",
+            "صور النشاط (داخل وخارج)",
+            "موقع المنشأة Google Map",
+            "كشف حساب Excel حسب مدة العمر المطلوبة"
+          ],
+          "facility_types": [
+            "fleet"
+          ],
+          "min_age_months": 56,
+          "accepts_foreign": true,
+          "min_total_revenue": 2000000,
+          "requires_invoices": false
+        },
+        "rule_id": "de09167b-5500-4e0c-b66e-26f02fd9a4b0"
+      },
+      "timestamp": "2026-04-05T20:53:03.149Z"
+    },
+    {
+      "id": "926cba33-9ff7-44a1-964a-ee8eb7660d48",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "changes": {
+          "name": "ممدوح المطري",
+          "role": "employee",
+          "phone": "0507309723"
+        },
+        "updated_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb"
+      },
+      "timestamp": "2026-04-05T21:04:47.407Z"
+    },
+    {
+      "id": "61c4e3e6-e00f-4744-8d18-f8708d104707",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+        "new_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "manage_permissions",
+          "view_employee_files",
+          "view_all_cases",
+          "assign_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics",
+          "view_entity_contacts",
+          "manage_entity_contacts",
+          "view_brokers",
+          "manage_brokers",
+          "view_business_registry",
+          "manage_business_registry",
+          "view_employee_stats"
+        ],
+        "old_extra_permissions": [
+          "add_users",
+          "edit_users",
+          "promote_roles",
+          "approve_partners",
+          "manage_permissions",
+          "view_employee_files",
+          "view_all_cases",
+          "assign_cases",
+          "add_entities",
+          "edit_entities",
+          "send_campaigns",
+          "view_analytics"
+        ]
+      },
+      "timestamp": "2026-04-05T21:06:15.434Z"
+    },
+    {
+      "id": "0e14e86f-8953-4619-a561-bf731e602b64",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.20.196.133",
+      "details": null,
+      "timestamp": "2026-04-05T21:06:24.678Z"
+    },
+    {
+      "id": "b00df246-4a9c-44c0-902f-fdea39733606",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.20.196.133",
+      "details": null,
+      "timestamp": "2026-04-05T21:08:58.464Z"
+    },
+    {
+      "id": "2975d44a-a253-4fe1-a7cc-6ac8fb8702ff",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.23.88.130",
+      "details": null,
+      "timestamp": "2026-04-05T21:09:08.766Z"
+    },
+    {
+      "id": "ee3ec146-255a-468d-a141-c492d3e55469",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "user_updated",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "action": "permissions_updated",
+        "target_user_id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+        "new_extra_permissions": [],
+        "old_extra_permissions": []
+      },
+      "timestamp": "2026-04-05T21:10:11.480Z"
+    },
+    {
+      "id": "2ff99680-05f7-4c2d-a58f-791fd6fd9f3f",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "register",
+      "case_id": null,
+      "ip_address": "10.22.60.66",
+      "details": null,
+      "timestamp": "2026-04-05T21:12:36.799Z"
+    },
+    {
+      "id": "1e22236b-533b-4821-990e-794e72e74e42",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "partner_approved",
+      "case_id": null,
+      "ip_address": "",
+      "details": {
+        "name": "تجربة",
+        "approved_user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1"
+      },
+      "timestamp": "2026-04-05T21:12:59.989Z"
+    },
+    {
+      "id": "b1af9d61-66d2-4923-8578-ebf50d36e5f8",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_created",
+      "case_id": "a4bce2a6-8816-45b9-b586-423a43367004",
+      "ip_address": "",
+      "details": {
+        "cr_file": "��سجل ريش 700� (2).pdf"
+      },
+      "timestamp": "2026-04-05T21:14:23.140Z"
+    },
+    {
+      "id": "25e023ee-f9fb-4a97-ba9a-a101c37dd548",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.20.196.133",
+      "details": null,
+      "timestamp": "2026-04-05T21:16:01.657Z"
+    },
+    {
+      "id": "9f61a67f-2a6a-45d5-a7ba-d5ab444584cf",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_rejected",
+      "case_id": "a4bce2a6-8816-45b9-b586-423a43367004",
+      "ip_address": "",
+      "details": {
+        "from": "analyzing",
+        "reason": "سحب الشريك"
+      },
+      "timestamp": "2026-04-05T21:16:19.640Z"
+    },
+    {
+      "id": "9b2080a1-70a1-4e5f-91d9-24a960f4b36f",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_created",
+      "case_id": "4a508558-e0b3-4776-aa6e-40a715db9f0b",
+      "ip_address": "",
+      "details": {
+        "cr_file": "سجل صناعي.pdf"
+      },
+      "timestamp": "2026-04-05T21:16:58.241Z"
+    },
+    {
+      "id": "e6a872d1-2d9d-4cd1-863a-ffb8688ce03a",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "file_uploaded",
+      "case_id": "a4bce2a6-8816-45b9-b586-423a43367004",
+      "ip_address": "",
+      "details": {
+        "bs_file": "كشف حساب جاري (1).pdf"
+      },
+      "timestamp": "2026-04-05T21:16:59.918Z"
+    },
+    {
+      "id": "40dc2a31-bf6f-4288-909a-301dd7ec73e9",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_created",
+      "case_id": "11785cbd-a907-4ef3-a4ae-e57c2095ac75",
+      "ip_address": "",
+      "details": {
+        "cr_file": "مؤسسة طيف العائد التجارية (2).pdf"
+      },
+      "timestamp": "2026-04-05T21:17:28.115Z"
+    },
+    {
+      "id": "3dc6c64d-d6d2-4d7e-9b10-e973c513973a",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.20.196.133",
+      "details": null,
+      "timestamp": "2026-04-05T21:18:22.264Z"
+    },
+    {
+      "id": "06f5f0b4-1952-4a67-ba76-20be29c7972d",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_created",
+      "case_id": "57cbfa0e-9217-4a9d-b369-71c588622f48",
+      "ip_address": "",
+      "details": {
+        "cr_file": "مؤسسة طيف العائد التجارية (2).pdf"
+      },
+      "timestamp": "2026-04-05T21:19:44.221Z"
+    },
+    {
+      "id": "02caca25-cebe-48af-baf6-8018ccca7055",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_rejected",
+      "case_id": "11785cbd-a907-4ef3-a4ae-e57c2095ac75",
+      "ip_address": "",
+      "details": {
+        "from": "analyzing",
+        "reason": "سحب الشريك"
+      },
+      "timestamp": "2026-04-05T21:21:39.874Z"
+    },
+    {
+      "id": "3e4ee372-b36f-4e87-9f0a-ef3254793428",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_rejected",
+      "case_id": "4a508558-e0b3-4776-aa6e-40a715db9f0b",
+      "ip_address": "",
+      "details": {
+        "from": "analyzing",
+        "reason": "سحب الشريك"
+      },
+      "timestamp": "2026-04-05T21:21:46.021Z"
+    },
+    {
+      "id": "cfb7d4cb-d646-4256-82f5-9dac8d69c14a",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.20.196.133",
+      "details": null,
+      "timestamp": "2026-04-05T21:21:56.958Z"
+    },
+    {
+      "id": "7e027f55-d87a-4315-be3f-9cb736f8f446",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "case_claimed",
+      "case_id": "a4bce2a6-8816-45b9-b586-423a43367004",
+      "ip_address": "",
+      "details": null,
+      "timestamp": "2026-04-05T21:22:07.439Z"
+    },
+    {
+      "id": "2e375941-40da-48c1-973a-71e421453b5a",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_created",
+      "case_id": "be4193ab-01d2-46e0-a701-ce84cb8d6e1b",
+      "ip_address": "",
+      "details": {
+        "cr_file": "السجل بعد التعديل.pdf"
+      },
+      "timestamp": "2026-04-05T21:24:19.671Z"
+    },
+    {
+      "id": "8b2ca2e9-8628-48c5-9901-2b0029c3f66f",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "user_name": "تجربة",
+      "user_role": "partner",
+      "action": "case_created",
+      "case_id": "2e153016-fa23-44e9-af2e-67cc3593ca66",
+      "ip_address": "",
+      "details": {
+        "cr_file": "مؤسسة طيف العائد التجارية (2).pdf"
+      },
+      "timestamp": "2026-04-05T21:25:45.589Z"
+    },
+    {
+      "id": "f71ae559-c811-4035-9bb4-b0d1c2bb1e59",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.22.60.66",
+      "details": null,
+      "timestamp": "2026-04-05T21:29:59.365Z"
+    },
+    {
+      "id": "bd77c485-2d1c-40af-b434-51a1571522a9",
+      "user_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "user_name": "نايف",
+      "user_role": "employee",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.17.180.68",
+      "details": null,
+      "timestamp": "2026-04-05T21:30:02.361Z"
+    },
+    {
+      "id": "99d02d08-af11-4b98-8741-fd19d88ab10e",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "user_name": "خالد عبدالله",
+      "user_role": "owner",
+      "action": "login",
+      "case_id": null,
+      "ip_address": "10.22.60.66",
+      "details": null,
+      "timestamp": "2026-04-05T21:51:48.614Z"
+    }
+  ],
+  "brokers": [
+    {
+      "id": "2a0e01ad-689d-496c-a4cd-72918919e394",
+      "name": "نوت",
+      "phone": "ن",
+      "email": "",
+      "company_name": "ن",
+      "cr_number": "ن",
+      "city": "ن",
+      "notes": "ن",
+      "is_active": false,
+      "created_at": "2026-04-05T20:15:52.524Z",
+      "updated_at": "2026-04-05T21:21:16.934Z"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "cb449d54-146a-4bb6-ac4c-123ac48b5403",
+      "title": "اابيل",
+      "content_type": "text",
+      "content_text": "بيلا",
+      "media_url": "",
+      "media_caption": "",
+      "target_audience": "all",
+      "target_group": "",
+      "status": "sent",
+      "total_recipients": 3,
+      "sent_count": 0,
+      "failed_count": 3,
+      "error_log": [
+        "0569202920: Wrong token. Please provide token as a GET parameter.",
+        "00201287299484: Wrong token. Please provide token as a GET parameter.",
+        "0561345012: Wrong token. Please provide token as a GET parameter."
+      ],
+      "created_by": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "sent_at": "2026-03-25T20:21:52.122Z",
+      "created_at": "2026-03-25T20:21:43.274Z",
+      "updated_at": "2026-03-25T20:21:52.404Z"
+    }
+  ],
+  "case_assignments": [
+    {
+      "id": "34229378-8e3a-4a18-929e-db5e1af7c017",
+      "case_id": "a4bce2a6-8816-45b9-b586-423a43367004",
+      "employee_id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "employee_name": "نايف",
+      "assigned_at": "2026-04-05T21:22:07.658Z",
+      "assigned_by": "4989e629-2ec6-4b81-922d-190459cdd982"
+    }
+  ],
+  "case_stage_history": [
+    {
+      "id": "f77a980e-305b-4d88-84a3-62581f4f8a0b",
+      "case_id": "a4bce2a6-8816-45b9-b586-423a43367004",
+      "stage": "analyzing",
+      "timestamp": "2026-04-05T21:14:23.711Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم إنشاء الطلب ورفع السجل التجاري",
+      "attachments": null
+    },
+    {
+      "id": "b2174a68-8890-49f0-b650-d6e1bcaf39c2",
+      "case_id": "a4bce2a6-8816-45b9-b586-423a43367004",
+      "stage": "rejected",
+      "timestamp": "2026-04-05T21:16:19.857Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم سحب الطلب من قِبَل الشريك",
+      "attachments": null
+    },
+    {
+      "id": "9663b2ba-b45e-4ca3-97d7-a5371474dc11",
+      "case_id": "4a508558-e0b3-4776-aa6e-40a715db9f0b",
+      "stage": "analyzing",
+      "timestamp": "2026-04-05T21:16:58.319Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم إنشاء الطلب ورفع السجل التجاري",
+      "attachments": null
+    },
+    {
+      "id": "ae746e9d-c13d-4d38-acce-7e8bc93031b8",
+      "case_id": "11785cbd-a907-4ef3-a4ae-e57c2095ac75",
+      "stage": "analyzing",
+      "timestamp": "2026-04-05T21:17:28.543Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم إنشاء الطلب ورفع السجل التجاري",
+      "attachments": null
+    },
+    {
+      "id": "583d29e8-d5ff-4390-9e85-8001594f3e68",
+      "case_id": "57cbfa0e-9217-4a9d-b369-71c588622f48",
+      "stage": "analyzing",
+      "timestamp": "2026-04-05T21:19:44.759Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم إنشاء الطلب ورفع السجل التجاري",
+      "attachments": null
+    },
+    {
+      "id": "fd50581c-4372-4cce-abec-248349ae428b",
+      "case_id": "11785cbd-a907-4ef3-a4ae-e57c2095ac75",
+      "stage": "rejected",
+      "timestamp": "2026-04-05T21:21:40.539Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم سحب الطلب من قِبَل الشريك",
+      "attachments": null
+    },
+    {
+      "id": "8b9db077-22f9-4e10-946c-8d412b5abea6",
+      "case_id": "4a508558-e0b3-4776-aa6e-40a715db9f0b",
+      "stage": "rejected",
+      "timestamp": "2026-04-05T21:21:46.593Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم سحب الطلب من قِبَل الشريك",
+      "attachments": null
+    },
+    {
+      "id": "2e1e713a-c0f6-40b8-99f7-3f7dc4528e14",
+      "case_id": "be4193ab-01d2-46e0-a701-ce84cb8d6e1b",
+      "stage": "analyzing",
+      "timestamp": "2026-04-05T21:24:19.743Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم إنشاء الطلب ورفع السجل التجاري",
+      "attachments": null
+    },
+    {
+      "id": "7474da78-55c5-4fd6-830b-462dcede0aea",
+      "case_id": "2e153016-fa23-44e9-af2e-67cc3593ca66",
+      "stage": "analyzing",
+      "timestamp": "2026-04-05T21:25:45.676Z",
+      "updated_by": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "updated_by_role": "partner",
+      "updated_by_name": "تجربة",
+      "note": "تم إنشاء الطلب ورفع السجل التجاري",
+      "attachments": null
+    }
+  ],
+  "cases": [
+    {
+      "id": "57cbfa0e-9217-4a9d-b369-71c588622f48",
+      "display_id": "JBZ-25328",
+      "partner_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "company_name": "",
+      "registration_number": "",
+      "entity_type": "مؤسسة فردية",
+      "issue_date": "2026-05-06",
+      "age_in_months": 0,
+      "activity": "",
+      "facility_type": "cash",
+      "has_pos": null,
+      "has_invoices": null,
+      "partner_count": 1,
+      "is_saudi": null,
+      "current_product_code": "",
+      "pre_filter_passed": null,
+      "required_bs_months": 0,
+      "stage": "analyzing",
+      "is_eligible": false,
+      "analysis_progress": 0,
+      "assigned_to": null,
+      "cr_file_path": "/app/uploads/cr/de05f1513afd4fc88e81bbf3dd0a673f.pdf",
+      "cr_file_name": "مؤسسة طيف العائد التجارية (2).pdf",
+      "bs_file_path": "",
+      "bs_file_name": "",
+      "analysis_result": null,
+      "confidence_score": 0,
+      "offer_code": "",
+      "entity_name": "",
+      "is_overridden": false,
+      "override_decision": "",
+      "override_reason": "",
+      "overridden_by": null,
+      "overridden_at": null,
+      "risk_flags": null,
+      "risk_flag_count": 0,
+      "has_high_risk": false,
+      "validation_recommendation": "",
+      "supplementary_docs": null,
+      "result_summary": "",
+      "last_stage_change_at": "2026-04-05T21:19:44.014Z",
+      "created_at": "2026-04-05T21:19:44.014Z",
+      "updated_at": "2026-04-05T21:20:51.036Z",
+      "completion_required_docs": null
+    },
+    {
+      "id": "11785cbd-a907-4ef3-a4ae-e57c2095ac75",
+      "display_id": "JBZ-39049",
+      "partner_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "company_name": "",
+      "registration_number": "",
+      "entity_type": "مؤسسة فردية",
+      "issue_date": "2026-04-08",
+      "age_in_months": 0,
+      "activity": "",
+      "facility_type": "pos",
+      "has_pos": null,
+      "has_invoices": null,
+      "partner_count": 1,
+      "is_saudi": null,
+      "current_product_code": "",
+      "pre_filter_passed": null,
+      "required_bs_months": 0,
+      "stage": "rejected",
+      "is_eligible": false,
+      "analysis_progress": 0,
+      "assigned_to": null,
+      "cr_file_path": "/app/uploads/cr/65d1a2207f8d47bb81f82e12519ac59c.pdf",
+      "cr_file_name": "مؤسسة طيف العائد التجارية (2).pdf",
+      "bs_file_path": "",
+      "bs_file_name": "",
+      "analysis_result": null,
+      "confidence_score": 0,
+      "offer_code": "",
+      "entity_name": "",
+      "is_overridden": false,
+      "override_decision": "",
+      "override_reason": "",
+      "overridden_by": null,
+      "overridden_at": null,
+      "risk_flags": null,
+      "risk_flag_count": 0,
+      "has_high_risk": false,
+      "validation_recommendation": "",
+      "supplementary_docs": null,
+      "result_summary": "تم سحب الطلب من قِبَل الشريك",
+      "last_stage_change_at": "2026-04-05T21:21:39.874Z",
+      "created_at": "2026-04-05T21:17:27.686Z",
+      "updated_at": "2026-04-05T21:21:40.396Z",
+      "completion_required_docs": null
+    },
+    {
+      "id": "4a508558-e0b3-4776-aa6e-40a715db9f0b",
+      "display_id": "JBZ-71580",
+      "partner_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "company_name": "",
+      "registration_number": "",
+      "entity_type": "",
+      "issue_date": "",
+      "age_in_months": 0,
+      "activity": "",
+      "facility_type": "pos",
+      "has_pos": null,
+      "has_invoices": null,
+      "partner_count": 1,
+      "is_saudi": null,
+      "current_product_code": "",
+      "pre_filter_passed": null,
+      "required_bs_months": 0,
+      "stage": "rejected",
+      "is_eligible": false,
+      "analysis_progress": 0,
+      "assigned_to": null,
+      "cr_file_path": "/app/uploads/cr/a6e70dbbf76b4e65b82291ff0be5b3fa.pdf",
+      "cr_file_name": "سجل صناعي.pdf",
+      "bs_file_path": "",
+      "bs_file_name": "",
+      "analysis_result": null,
+      "confidence_score": 0,
+      "offer_code": "",
+      "entity_name": "",
+      "is_overridden": false,
+      "override_decision": "",
+      "override_reason": "",
+      "overridden_by": null,
+      "overridden_at": null,
+      "risk_flags": null,
+      "risk_flag_count": 0,
+      "has_high_risk": false,
+      "validation_recommendation": "",
+      "supplementary_docs": null,
+      "result_summary": "تم سحب الطلب من قِبَل الشريك",
+      "last_stage_change_at": "2026-04-05T21:21:46.020Z",
+      "created_at": "2026-04-05T21:16:58.056Z",
+      "updated_at": "2026-04-05T21:21:46.452Z",
+      "completion_required_docs": null
+    },
+    {
+      "id": "a4bce2a6-8816-45b9-b586-423a43367004",
+      "display_id": "JBZ-10560",
+      "partner_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "company_name": "ريش",
+      "registration_number": "0101010101",
+      "entity_type": "مؤسسة فردية",
+      "issue_date": "2024-06-06",
+      "age_in_months": 22,
+      "activity": "",
+      "facility_type": "pos",
+      "has_pos": true,
+      "has_invoices": false,
+      "partner_count": 1,
+      "is_saudi": true,
+      "current_product_code": "EMKAN",
+      "pre_filter_passed": [
+        "EMKAN",
+        "SDF_POS"
+      ],
+      "required_bs_months": 12,
+      "stage": "completing_request",
+      "is_eligible": false,
+      "analysis_progress": 100,
+      "assigned_to": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "cr_file_path": "/app/uploads/cr/98c5346052ac49909aa1846660c7d670.pdf",
+      "cr_file_name": "��سجل ريش 700� (2).pdf",
+      "bs_file_path": "/app/uploads/bs/d833d3f7ac45470aa40131296b2403ec.pdf",
+      "bs_file_name": "كشف حساب جاري (1).pdf",
+      "analysis_result": {
+        "pos_sales": 922222,
+        "total_debit": 24999,
+        "other_income": 50000,
+        "total_credit": 250000,
+        "required_docs": [],
+        "pdf_manual_review": true
+      },
+      "confidence_score": 0,
+      "offer_code": "",
+      "entity_name": "",
+      "is_overridden": false,
+      "override_decision": "",
+      "override_reason": "",
+      "overridden_by": null,
+      "overridden_at": null,
+      "risk_flags": null,
+      "risk_flag_count": 0,
+      "has_high_risk": false,
+      "validation_recommendation": "",
+      "supplementary_docs": [
+        {
+          "size": 540815,
+          "type": "basic_doc",
+          "label": "صورة الهوية الوطنية / الإقامة",
+          "stored_name": "15e3f4f2fe2d4a9ea3dd8e0c8b97ad2d.pdf",
+          "uploaded_at": "2026-04-06T00:17:36.171996",
+          "original_name": "الهوية الوطنية_14-11-2025 (1).pdf"
+        },
+        {
+          "size": 322353,
+          "type": "basic_doc",
+          "label": "العنوان الوطني للمنشأة والملاك",
+          "stored_name": "546032d493ac4f0ab756c02936d7c1cc.pdf",
+          "uploaded_at": "2026-04-06T00:17:39.828552",
+          "original_name": "رخصه البلديه ريش 1.pdf"
+        },
+        {
+          "size": 68514,
+          "type": "basic_doc",
+          "label": "شهادة الآيبان بالباركود",
+          "stored_name": "b35c22d526784eb0b33566e592f6cd52.pdf",
+          "uploaded_at": "2026-04-06T00:17:42.312317",
+          "original_name": "كشف حساب جاري (1).pdf"
+        }
+      ],
+      "result_summary": "",
+      "last_stage_change_at": "2026-04-05T21:17:06.047Z",
+      "created_at": "2026-04-05T21:14:22.935Z",
+      "updated_at": "2026-04-05T21:22:07.511Z",
+      "completion_required_docs": null
+    },
+    {
+      "id": "be4193ab-01d2-46e0-a701-ce84cb8d6e1b",
+      "display_id": "JBZ-65949",
+      "partner_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "company_name": "",
+      "registration_number": "",
+      "entity_type": "مؤسسة فردية",
+      "issue_date": "2026-02-19",
+      "age_in_months": 1,
+      "activity": "",
+      "facility_type": "pos",
+      "has_pos": null,
+      "has_invoices": null,
+      "partner_count": 1,
+      "is_saudi": null,
+      "current_product_code": "",
+      "pre_filter_passed": null,
+      "required_bs_months": 0,
+      "stage": "analyzing",
+      "is_eligible": false,
+      "analysis_progress": 0,
+      "assigned_to": null,
+      "cr_file_path": "/app/uploads/cr/7889fc406ad645979501148093eefdc8.pdf",
+      "cr_file_name": "السجل بعد التعديل.pdf",
+      "bs_file_path": "",
+      "bs_file_name": "",
+      "analysis_result": null,
+      "confidence_score": 0,
+      "offer_code": "",
+      "entity_name": "",
+      "is_overridden": false,
+      "override_decision": "",
+      "override_reason": "",
+      "overridden_by": null,
+      "overridden_at": null,
+      "risk_flags": null,
+      "risk_flag_count": 0,
+      "has_high_risk": false,
+      "validation_recommendation": "",
+      "supplementary_docs": null,
+      "result_summary": "",
+      "last_stage_change_at": "2026-04-05T21:24:19.528Z",
+      "created_at": "2026-04-05T21:24:19.528Z",
+      "updated_at": "2026-04-05T21:24:33.548Z",
+      "completion_required_docs": null
+    },
+    {
+      "id": "2e153016-fa23-44e9-af2e-67cc3593ca66",
+      "display_id": "JBZ-38648",
+      "partner_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "company_name": "",
+      "registration_number": "",
+      "entity_type": "مؤسسة فردية",
+      "issue_date": "2026-04-02",
+      "age_in_months": 0,
+      "activity": "",
+      "facility_type": "pos",
+      "has_pos": null,
+      "has_invoices": null,
+      "partner_count": 1,
+      "is_saudi": null,
+      "current_product_code": "",
+      "pre_filter_passed": null,
+      "required_bs_months": 0,
+      "stage": "analyzing",
+      "is_eligible": false,
+      "analysis_progress": 0,
+      "assigned_to": null,
+      "cr_file_path": "/app/uploads/cr/5865831c83ca4975ae32cc0521cf568e.pdf",
+      "cr_file_name": "مؤسسة طيف العائد التجارية (2).pdf",
+      "bs_file_path": "",
+      "bs_file_name": "",
+      "analysis_result": null,
+      "confidence_score": 0,
+      "offer_code": "",
+      "entity_name": "",
+      "is_overridden": false,
+      "override_decision": "",
+      "override_reason": "",
+      "overridden_by": null,
+      "overridden_at": null,
+      "risk_flags": null,
+      "risk_flag_count": 0,
+      "has_high_risk": false,
+      "validation_recommendation": "",
+      "supplementary_docs": null,
+      "result_summary": "",
+      "last_stage_change_at": "2026-04-05T21:25:45.378Z",
+      "created_at": "2026-04-05T21:25:45.378Z",
+      "updated_at": "2026-04-05T21:26:02.974Z",
+      "completion_required_docs": null
+    }
+  ],
+  "contacts": [
+    {
+      "id": "1c41d68b-8160-48f3-9327-7f334e6c0331",
+      "name": "تجربة",
+      "phone": "0569202929",
+      "company_name": "ريش",
+      "group_name": "عملاء",
+      "notes": "طلب #JBZ-10560",
+      "tags": null,
+      "is_active": true,
+      "source": "manual",
+      "created_at": "2026-04-05T21:20:25.331Z",
+      "updated_at": "2026-04-05T21:20:25.331Z"
+    }
+  ],
+  "entity_rules": [
+    {
+      "id": "d7df9936-c89e-49a6-a258-4a1e161adac6",
+      "entity_name": "أملاك",
+      "entity_code": "AMLAK",
+      "product_code": "AMLAK",
+      "product_name": "تمويل أملاك",
+      "facility_types": [
+        "pos",
+        "cash",
+        "fleet"
+      ],
+      "priority": 4,
+      "is_active": true,
+      "min_age_months": 24,
+      "requires_pos": false,
+      "requires_invoices": false,
+      "max_partners": null,
+      "accepts_foreign": true,
+      "blocked_activities": null,
+      "allowed_entity_types": null,
+      "min_pos_rajhi": null,
+      "min_pos_other": null,
+      "min_total_deposits": null,
+      "min_total_revenue": 7000000,
+      "min_profit_ratio": 0.08,
+      "requires_stability_check": false,
+      "tax_returns_count": 6,
+      "tax_returns_frequency": "quarterly",
+      "financial_statement_rule": "certified",
+      "offer_code_prefix": "AML",
+      "required_docs": [
+        "صورة السجل التجاري",
+        "صورة الهوية/الإقامة",
+        "عقد التأسيس (إن كانت شركة)",
+        "الترخيص الاستثماري (إن كانت شركة استثمارية)",
+        "شهادة البلدية",
+        "شهادة الزكاة والدخل",
+        "شهادة القيمة المضافة",
+        "شهادة التأمينات الاجتماعية",
+        "العنوان الوطني للمنشأة والملاك",
+        "شهادة الآيبان بالباركود",
+        "القوائم المالية المعتمدة (إلزامي)",
+        "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+        "كشف حساب Excel لآخر 12 شهر",
+        "العقود (إن وجدت)"
+      ],
+      "extra_conditions": null,
+      "description": "أملاك — عمر ≥24، إيرادات ≥7M، صافي ربح ≥8%، قوائم معتمدة إلزامية",
+      "created_at": "2026-03-19T10:23:54.497Z",
+      "updated_at": "2026-03-19T10:23:54.497Z"
+    },
+    {
+      "id": "7334e6ed-8719-45ee-be7e-8cd73b46df37",
+      "entity_name": "صندوق التنمية",
+      "entity_code": "SDF",
+      "product_code": "SDF_POS",
+      "product_name": "نقاط بيع",
+      "facility_types": [
+        "pos"
+      ],
+      "priority": 3,
+      "is_active": true,
+      "min_age_months": 18,
+      "requires_pos": true,
+      "requires_invoices": false,
+      "max_partners": null,
+      "accepts_foreign": true,
+      "blocked_activities": null,
+      "allowed_entity_types": null,
+      "min_pos_rajhi": null,
+      "min_pos_other": null,
+      "min_total_deposits": null,
+      "min_total_revenue": 6000000,
+      "min_profit_ratio": null,
+      "requires_stability_check": true,
+      "tax_returns_count": 6,
+      "tax_returns_frequency": "quarterly",
+      "financial_statement_rule": "conditional",
+      "offer_code_prefix": "SDF",
+      "required_docs": [
+        "صورة السجل التجاري",
+        "صورة الهوية",
+        "عقد التأسيس (إن كانت شركة)",
+        "شهادة البلدية",
+        "شهادة الزكاة والدخل",
+        "شهادة القيمة المضافة",
+        "شهادة التأمينات الاجتماعية",
+        "العنوان الوطني",
+        "شهادة الآيبان",
+        "كشف حساب Excel حسب المدة المطلوبة",
+        "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+        "القوائم المالية (داخلية للمؤسسة / معتمدة للشركة) اخر سنتين",
+        "الترخيص الاستثماري اذا شركه اجنبيه",
+        "صوره الاقامه متضمنه تاريخ الانتهاء من ابشر"
+      ],
+      "extra_conditions": null,
+      "description": "صندوق التنمية — مسار POS — عمر ≥18، إيرادات ≥6M، استقرار إيرادات، إقرارات (6 ربع سنوي أو 15 شهري)\n",
+      "created_at": "2026-03-19T10:23:54.497Z",
+      "updated_at": "2026-03-30T09:59:05.162Z"
+    },
+    {
+      "id": "e2f805d8-ba93-402f-8e59-d49d3fcef55d",
+      "entity_name": "إمكان",
+      "entity_code": "EMKAN",
+      "product_code": "EMKAN",
+      "product_name": "نقاط بيع",
+      "facility_types": [
+        "pos"
+      ],
+      "priority": 2,
+      "is_active": true,
+      "min_age_months": 6,
+      "requires_pos": true,
+      "requires_invoices": false,
+      "max_partners": 1,
+      "accepts_foreign": false,
+      "blocked_activities": null,
+      "allowed_entity_types": [
+        "مؤسسة",
+        "مؤسسة فردية",
+        "شركة شخص واحد",
+        "شركة ذات مسؤولية محدودة"
+      ],
+      "min_pos_rajhi": 800000,
+      "min_pos_other": 2000000,
+      "min_total_deposits": null,
+      "min_total_revenue": null,
+      "min_profit_ratio": null,
+      "requires_stability_check": false,
+      "tax_returns_count": null,
+      "tax_returns_frequency": null,
+      "financial_statement_rule": null,
+      "offer_code_prefix": "EMK",
+      "required_docs": [
+        "صورة السجل التجاري",
+        "صورة الهوية",
+        "شهادة البلدية",
+        "شهادة التوطين",
+        "العنوان الوطني للمنشأة والمالك",
+        "صور النشاط (داخل وخارج)",
+        "شهادة الآيبان بالباركود"
+      ],
+      "extra_conditions": null,
+      "description": "إمكان — عمر ≥7 اشهر الى 23 شهر  مؤسسة/شخص واحد، سعودي فقط، يتطلب POS ≥800K (راجحي) \nتمويل نقاط بيع \nوقريبا اقرارات ضريبيه\nمنشاءت سعوديه فقط",
+      "created_at": "2026-03-19T10:23:54.497Z",
+      "updated_at": "2026-03-30T09:57:06.288Z"
+    },
+    {
+      "id": "bef90cca-b29e-4b5f-a37a-20e8c96d8aeb",
+      "entity_name": "سهل",
+      "entity_code": "SAHL",
+      "product_code": "SAHL",
+      "product_name": "تمويل سهل",
+      "facility_types": [
+        "pos",
+        "cash",
+        "fleet"
+      ],
+      "priority": 5,
+      "is_active": true,
+      "min_age_months": 24,
+      "requires_pos": false,
+      "requires_invoices": false,
+      "max_partners": null,
+      "accepts_foreign": false,
+      "blocked_activities": null,
+      "allowed_entity_types": null,
+      "min_pos_rajhi": null,
+      "min_pos_other": null,
+      "min_total_deposits": null,
+      "min_total_revenue": 7000000,
+      "min_profit_ratio": 0.08,
+      "requires_stability_check": false,
+      "tax_returns_count": 6,
+      "tax_returns_frequency": "quarterly",
+      "financial_statement_rule": "certified",
+      "offer_code_prefix": "SHL",
+      "required_docs": [
+        "صورة السجل التجاري",
+        "صورة الهوية/الإقامة",
+        "عقد التأسيس (إن كانت شركة)",
+        "الترخيص الاستثماري (إن كانت شركة استثمارية)",
+        "شهادة البلدية",
+        "شهادة الزكاة والدخل",
+        "شهادة القيمة المضافة",
+        "شهادة التأمينات الاجتماعية",
+        "العنوان الوطني للمنشأة والملاك",
+        "شهادة الآيبان بالباركود",
+        "القوائم المالية المعتمدة (إلزامي)",
+        "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+        "كشف حساب Excel لآخر 12 شهر",
+        "العقود (إن وجدت)"
+      ],
+      "extra_conditions": null,
+      "description": "سهل — نفس شروط أملاك تمامًا (عمر ≥24، إيرادات ≥7M، صافي ربح ≥8%، قوائم معتمدة إلزامية)",
+      "created_at": "2026-03-19T10:23:54.497Z",
+      "updated_at": "2026-03-30T10:02:17.229Z"
+    },
+    {
+      "id": "de09167b-5500-4e0c-b66e-26f02fd9a4b0",
+      "entity_name": "مصرف الراجحي",
+      "entity_code": "RAJHI",
+      "product_code": "RAJHI_FLEET",
+      "product_name": "أسطول",
+      "facility_types": [
+        "fleet"
+      ],
+      "priority": 1,
+      "is_active": true,
+      "min_age_months": 56,
+      "requires_pos": false,
+      "requires_invoices": false,
+      "max_partners": 8,
+      "accepts_foreign": true,
+      "blocked_activities": [
+        "الذهب"
+      ],
+      "allowed_entity_types": null,
+      "min_pos_rajhi": 655656564,
+      "min_pos_other": 4433434,
+      "min_total_deposits": null,
+      "min_total_revenue": 2000000,
+      "min_profit_ratio": null,
+      "requires_stability_check": false,
+      "tax_returns_count": null,
+      "tax_returns_frequency": null,
+      "financial_statement_rule": null,
+      "offer_code_prefix": "RAJ",
+      "required_docs": [
+        "صورة السجل التجاري",
+        "صورة الهوية/الإقامة",
+        "عقد التأسيس (إن كانت شركة)",
+        "شهادة البلدية",
+        "شهادة التوطين",
+        "العنوان الوطني للمنشأة والملاك",
+        "شهادة الآيبان بالباركود",
+        "صور النشاط (داخل وخارج)",
+        "موقع المنشأة Google Map",
+        "كشف حساب Excel حسب مدة العمر المطلوبة"
+      ],
+      "extra_conditions": null,
+      "description": "الراجحي أسطول — عمر ≥24، تقييم عبر كشف الحساب والمستندات، لا يشترط إقرارات",
+      "created_at": "2026-03-19T10:23:54.497Z",
+      "updated_at": "2026-04-05T20:53:03.727Z"
+    },
+    {
+      "id": "f8278c0a-7bc9-4b12-93d3-1b0c781c3696",
+      "entity_name": "مصرف الراجحي",
+      "entity_code": "RAJHI",
+      "product_code": "RAJHI_POS",
+      "product_name": "نقاط بيع",
+      "facility_types": [
+        "pos"
+      ],
+      "priority": 1,
+      "is_active": false,
+      "min_age_months": 24,
+      "requires_pos": false,
+      "requires_invoices": false,
+      "max_partners": null,
+      "accepts_foreign": true,
+      "blocked_activities": [
+        "الذهب"
+      ],
+      "allowed_entity_types": null,
+      "min_pos_rajhi": 800000,
+      "min_pos_other": 2000000,
+      "min_total_deposits": null,
+      "min_total_revenue": null,
+      "min_profit_ratio": null,
+      "requires_stability_check": false,
+      "tax_returns_count": null,
+      "tax_returns_frequency": null,
+      "financial_statement_rule": null,
+      "offer_code_prefix": "RAJ",
+      "required_docs": [
+        "صورة السجل التجاري",
+        "صورة الهوية/الإقامة",
+        "عقد التأسيس (إن كانت شركة)",
+        "شهادة البلدية",
+        "شهادة التوطين",
+        "العنوان الوطني للمنشأة والملاك",
+        "شهادة الآيبان بالباركود",
+        "صور النشاط (داخل وخارج)",
+        "موقع المنشأة Google Map",
+        "كشف حساب Excel حسب مدة العمر المطلوبة",
+        "ئ"
+      ],
+      "extra_conditions": null,
+      "description": "الراجحي نقاط بيع — عمر ≥24، POS ≥800K (راجحي) أو 2M (خارجي)، النشاط: كل ما عدا الذهب",
+      "created_at": "2026-03-19T10:23:54.497Z",
+      "updated_at": "2026-04-05T21:01:49.127Z"
+    },
+    {
+      "id": "410d39b1-abf1-4a9f-9937-590067b329c0",
+      "entity_name": "مصرف الراجحي",
+      "entity_code": "RAJHI",
+      "product_code": "RAJHI_CASH",
+      "product_name": "كاش",
+      "facility_types": [
+        "cash",
+        "pos",
+        "fleet"
+      ],
+      "priority": 1,
+      "is_active": false,
+      "min_age_months": 2,
+      "requires_pos": true,
+      "requires_invoices": false,
+      "max_partners": null,
+      "accepts_foreign": true,
+      "blocked_activities": [
+        "الذهب"
+      ],
+      "allowed_entity_types": null,
+      "min_pos_rajhi": null,
+      "min_pos_other": null,
+      "min_total_deposits": 5000000,
+      "min_total_revenue": 1200000,
+      "min_profit_ratio": null,
+      "requires_stability_check": false,
+      "tax_returns_count": 3,
+      "tax_returns_frequency": "yearly",
+      "financial_statement_rule": null,
+      "offer_code_prefix": "RAJ",
+      "required_docs": [
+        "صورة السجل التجاري",
+        "صورة الهوية/الإقامة",
+        "عقد التأسيس (إن كانت شركة)",
+        "شهادة البلدية",
+        "شهادة التوطين",
+        "العنوان الوطني للمنشأة والملاك",
+        "شهادة الآيبان بالباركود",
+        "صور النشاط (داخل وخارج)",
+        "موقع المنشأة Google Map",
+        "كشوفات حساب اخر 12 شهر اكسل و pdf وكشف حساب اخر 3 شهور مختوم اول واخر 5 اوراق اذا بنك غير الراجحي",
+        "إقرارات ضريبية لآخر 3 سنوات اذا كان حركه الحساب ايداع وتحويل",
+        "الترخيص الاستثماري اذا شركه اجنبيه",
+        "صوره الهويه واضح تاريخ انتهاء الاقامه للمستثمرين"
+      ],
+      "extra_conditions": null,
+      "description": "الراجحي كاش — عمر ≥24 شهر للمنشات السعوديه و36 شهر للشركات الاجنبيه، إيداعات ≥5M، \nإقرارات ضريبية لآخر 3 سنوات",
+      "created_at": "2026-03-19T10:23:54.497Z",
+      "updated_at": "2026-04-05T21:01:56.441Z"
+    },
+    {
+      "id": "de1cc479-e59c-4916-8acb-956975c05da9",
+      "entity_name": "صندوق التنمية",
+      "entity_code": "SDF",
+      "product_code": "SDF_INVOICES",
+      "product_name": "فواتير",
+      "facility_types": [
+        "cash"
+      ],
+      "priority": 3,
+      "is_active": false,
+      "min_age_months": 18,
+      "requires_pos": false,
+      "requires_invoices": false,
+      "max_partners": null,
+      "accepts_foreign": true,
+      "blocked_activities": null,
+      "allowed_entity_types": null,
+      "min_pos_rajhi": null,
+      "min_pos_other": null,
+      "min_total_deposits": null,
+      "min_total_revenue": 6000000,
+      "min_profit_ratio": null,
+      "requires_stability_check": true,
+      "tax_returns_count": 6,
+      "tax_returns_frequency": "quarterly",
+      "financial_statement_rule": "conditional",
+      "offer_code_prefix": "SDF",
+      "required_docs": [
+        "صورة السجل التجاري",
+        "صورة الهوية",
+        "عقد التأسيس (إن كانت شركة)",
+        "شهادة البلدية",
+        "شهادة الزكاة والدخل",
+        "شهادة القيمة المضافة",
+        "شهادة التأمينات الاجتماعية",
+        "العنوان الوطني",
+        "شهادة الآيبان",
+        "كشف حساب Excel وpdf اخر 12 شهر ",
+        "الإقرارات الضريبية (6 ربع سنوي أو 15 شهري)",
+        "القوائم المالية (داخلية للمؤسسة / معتمدة للشركة)",
+        "ملف/ملفات فواتير المبيعات (Excel/PDF)",
+        "الترخيص الاستثماري للشركات الاجنبيه",
+        "صوره الاقامه من ابشر بتاريخ الانتهاء"
+      ],
+      "extra_conditions": null,
+      "description": "صندوق التنمية — مسار فواتير — عمر ≥18، إيرادات ≥6M، استقرار إيرادات، فواتير مبيعات",
+      "created_at": "2026-03-19T10:23:54.497Z",
+      "updated_at": "2026-04-05T21:04:03.972Z"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "6576ce01-15fe-497b-abf8-211fe466682a",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "notification_type": "new_partner",
+      "title": "طلب تسجيل جديد: سالم الدوسري",
+      "message": "رقم الجوال: 0595288084 — يتطلب موافقتك",
+      "case_id": null,
+      "is_read": true,
+      "created_at": "2026-03-26T21:12:14.117Z"
+    },
+    {
+      "id": "1b28ef6c-72a1-4f71-b539-3bfc9aaebbeb",
+      "user_id": "b5972f33-bf19-49ce-aa59-ae03b256609f",
+      "notification_type": "approval_result",
+      "title": "تم تفعيل حسابك",
+      "message": "مرحباً سالم الدوسري! تمت موافقة الإدارة على تسجيلك. يمكنك تسجيل الدخول.",
+      "case_id": null,
+      "is_read": true,
+      "created_at": "2026-03-26T22:07:25.475Z"
+    },
+    {
+      "id": "f94ef553-1f4f-4c7c-8552-fcde0e3714ec",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "notification_type": "new_partner",
+      "title": "طلب تسجيل جديد: المطري",
+      "message": "رقم الجوال: 0507309723 — يتطلب موافقتك",
+      "case_id": null,
+      "is_read": true,
+      "created_at": "2026-03-27T01:06:28.259Z"
+    },
+    {
+      "id": "d405b5a5-f6bb-4e0c-9eb1-f84d65569383",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "notification_type": "new_partner",
+      "title": "طلب تسجيل جديد: تاتا",
+      "message": "رقم الجوال: 0555555555 — يتطلب موافقتك",
+      "case_id": null,
+      "is_read": true,
+      "created_at": "2026-03-30T23:44:02.119Z"
+    },
+    {
+      "id": "3dd11d13-0772-4d54-a8fd-95853914ee69",
+      "user_id": "7adfeff4-aabd-48cb-b4a1-013f69e1549b",
+      "notification_type": "approval_result",
+      "title": "تم تفعيل حسابك",
+      "message": "مرحباً تاتا! تمت موافقة الإدارة على تسجيلك. يمكنك تسجيل الدخول.",
+      "case_id": null,
+      "is_read": false,
+      "created_at": "2026-03-31T02:45:26.688Z"
+    },
+    {
+      "id": "b44d5147-0070-4d23-9832-297303883f1e",
+      "user_id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "notification_type": "new_partner",
+      "title": "طلب تسجيل جديد: تجربة",
+      "message": "رقم الجوال: 0569202929 — يتطلب موافقتك",
+      "case_id": null,
+      "is_read": false,
+      "created_at": "2026-04-05T21:12:37.015Z"
+    },
+    {
+      "id": "c5c3b531-4e67-447a-859e-a77235f691e8",
+      "user_id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "notification_type": "approval_result",
+      "title": "تم تفعيل حسابك",
+      "message": "مرحباً تجربة! تمت موافقة الإدارة على تسجيلك. يمكنك تسجيل الدخول.",
+      "case_id": null,
+      "is_read": false,
+      "created_at": "2026-04-05T21:13:00.060Z"
+    }
+  ],
+  "permissions": [
+    {
+      "id": 1,
+      "key": "view_all_requests",
+      "label": "عرض جميع الطلبات",
+      "description": "يستطيع رؤية طلبات جميع الموظفين والشركاء",
+      "category": "الطلبات",
+      "created_at": "2026-04-12T05:43:33.993Z"
+    },
+    {
+      "id": 2,
+      "key": "update_request_status",
+      "label": "تحديث حالة الطلبات",
+      "description": "يستطيع تغيير حالة أي طلب",
+      "category": "الطلبات",
+      "created_at": "2026-04-12T05:43:34.418Z"
+    },
+    {
+      "id": 3,
+      "key": "send_missing_docs",
+      "label": "إرسال نواقص للموظف",
+      "description": "يستطيع طلب مستندات ناقصة من الموظف",
+      "category": "الطلبات",
+      "created_at": "2026-04-12T05:43:34.833Z"
+    },
+    {
+      "id": 4,
+      "key": "send_to_funding",
+      "label": "إرسال الملف للجهة التمويلية",
+      "description": "يظهر له زر الإرسال عبر واتساب للجهة التمويلية",
+      "category": "الإرسال",
+      "created_at": "2026-04-12T05:43:35.269Z"
+    },
+    {
+      "id": 5,
+      "key": "send_to_employee",
+      "label": "التواصل مع الموظف بالواتساب",
+      "description": "يستطيع الضغط على زر واتساب الموظف",
+      "category": "الإرسال",
+      "created_at": "2026-04-12T05:43:35.679Z"
+    },
+    {
+      "id": 6,
+      "key": "approve_users",
+      "label": "الموافقة على المستخدمين",
+      "description": "يستطيع تفعيل أو حظر المستخدمين الجدد",
+      "category": "المستخدمون",
+      "created_at": "2026-04-12T05:43:36.090Z"
+    },
+    {
+      "id": 7,
+      "key": "manage_funding",
+      "label": "إدارة الجهات التمويلية",
+      "description": "يستطيع إضافة وتعديل وحذف الجهات التمويلية",
+      "category": "الجهات التمويلية",
+      "created_at": "2026-04-12T05:43:36.504Z"
+    },
+    {
+      "id": 8,
+      "key": "manage_settings",
+      "label": "الوصول للإعدادات",
+      "description": "يستطيع تعديل إعدادات المنصة والذكاء الاصطناعي",
+      "category": "الإعدادات",
+      "created_at": "2026-04-12T05:43:36.913Z"
+    }
+  ],
+  "settings": [
+    {
+      "key": "ai_provider",
+      "value": "openai",
+      "updated_at": "2026-04-12T05:43:31.869Z"
+    },
+    {
+      "key": "ai_model",
+      "value": "gpt-4o",
+      "updated_at": "2026-04-12T05:43:32.289Z"
+    },
+    {
+      "key": "ai_api_key",
+      "value": "",
+      "updated_at": "2026-04-12T05:43:32.738Z"
+    },
+    {
+      "key": "platform_name",
+      "value": "منصة جنان بيز حلول الأعمال",
+      "updated_at": "2026-04-12T05:43:33.163Z"
+    },
+    {
+      "key": "admin_whatsapp",
+      "value": "",
+      "updated_at": "2026-04-12T05:43:33.584Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "1652d40a-cc54-4d9e-afcc-798c33371deb",
+      "name": "ممدوح المطري",
+      "phone": "0507309723",
+      "password_hash": "$2b$12$uNl9TomOgOr9Avgagj/I9OXVLbn4JJs2igGGDeDhATZhysPia0lG2",
+      "role": "employee",
+      "is_active": true,
+      "otp_code": null,
+      "otp_expires_at": null,
+      "otp_attempts": 0,
+      "created_at": "2026-03-27T01:06:27.896Z",
+      "updated_at": "2026-04-05T21:04:48.000Z",
+      "extra_permissions": []
+    },
+    {
+      "id": "b5972f33-bf19-49ce-aa59-ae03b256609f",
+      "name": "سالم الدوسري",
+      "phone": "0595288084",
+      "password_hash": "$2b$12$Yo6X3IKqfbB5Il/pnEd0GuR1EL7gSUEhwbog6.fmWum1d/1FOp5a2",
+      "role": "employee",
+      "is_active": true,
+      "otp_code": null,
+      "otp_expires_at": null,
+      "otp_attempts": 0,
+      "created_at": "2026-03-26T21:12:13.231Z",
+      "updated_at": "2026-03-26T22:07:58.192Z",
+      "extra_permissions": []
+    },
+    {
+      "id": "4989e629-2ec6-4b81-922d-190459cdd982",
+      "name": "نايف",
+      "phone": "0500000011",
+      "password_hash": "$2b$12$lIHkvTusNm1KVSVpK/HSvOwbdKx5umh5ZMKpfxcwN11n.SZZ4kB.q",
+      "role": "employee",
+      "is_active": true,
+      "otp_code": null,
+      "otp_expires_at": null,
+      "otp_attempts": 0,
+      "created_at": "2026-03-30T11:16:46.377Z",
+      "updated_at": "2026-04-05T21:06:15.517Z",
+      "extra_permissions": [
+        "add_users",
+        "edit_users",
+        "promote_roles",
+        "approve_partners",
+        "manage_permissions",
+        "view_employee_files",
+        "view_all_cases",
+        "assign_cases",
+        "add_entities",
+        "edit_entities",
+        "send_campaigns",
+        "view_analytics",
+        "view_entity_contacts",
+        "manage_entity_contacts",
+        "view_brokers",
+        "manage_brokers",
+        "view_business_registry",
+        "manage_business_registry",
+        "view_employee_stats"
+      ]
+    },
+    {
+      "id": "706a9c5d-9a1e-4ea5-942a-9511b199aae1",
+      "name": "تجربة",
+      "phone": "0569202929",
+      "password_hash": "$2b$12$CwUwL9mRNsIWZah.KBtI1ONou263RYUHU0tzWbtxkwxIAgGkqQCbq",
+      "role": "partner",
+      "is_active": true,
+      "otp_code": null,
+      "otp_expires_at": null,
+      "otp_attempts": 0,
+      "created_at": "2026-04-05T21:12:36.654Z",
+      "updated_at": "2026-04-05T21:13:00.131Z",
+      "extra_permissions": []
+    },
+    {
+      "id": "7adfeff4-aabd-48cb-b4a1-013f69e1549b",
+      "name": "تاتا",
+      "phone": "0555555555",
+      "password_hash": "$2b$12$ADyNS5zTaKOaiqiPW6PRJe3/nH2fxYJU13jyYjICm2t/s7q3yvVt2",
+      "role": "partner",
+      "is_active": true,
+      "otp_code": null,
+      "otp_expires_at": null,
+      "otp_attempts": 0,
+      "created_at": "2026-03-30T23:44:01.739Z",
+      "updated_at": "2026-03-31T02:45:26.833Z",
+      "extra_permissions": []
+    },
+    {
+      "id": "61c78aea-d11c-46b6-80bf-1cbfc71dca4c",
+      "name": "خالد عبدالله",
+      "phone": "0569202920",
+      "password_hash": "$2b$12$SwHuPe.nmAoLQkxy9TAPzORQNks3o1zCOcIOYv7ssL1nucWhWq0YK",
+      "role": "owner",
+      "is_active": true,
+      "otp_code": "7142",
+      "otp_expires_at": "2026-04-05T09:06:09.245Z",
+      "otp_attempts": 0,
+      "created_at": "2026-03-23T18:08:40.266Z",
+      "updated_at": "2026-04-05T08:56:09.247Z",
+      "extra_permissions": []
+    }
+  ]
+}

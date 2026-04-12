@@ -39,8 +39,8 @@ const accountUpload = multer({ storage: makeStorage('account-statements'), fileF
 const taxUpload = multer({ storage: makeStorage('tax-documents'), fileFilter, limits: { fileSize: 25 * 1024 * 1024 } });
 
 // Helper: check eligibility against funding entities
-function checkEligibility(totalPos, totalDeposit, totalTransfer, months, fundingType, bankName = '', recordAgeMonths = 0, ownershipType = 'سعودي', entityType = 'شركة') {
-  const entities = db.prepare('SELECT * FROM funding_entities WHERE is_active = 1 ORDER BY priority DESC').all();
+async function checkEligibility(totalPos, totalDeposit, totalTransfer, months, fundingType, bankName = '', recordAgeMonths = 0, ownershipType = 'سعودي', entityType = 'شركة') {
+  const entities = await db.prepare('SELECT * FROM funding_entities WHERE is_active = 1 ORDER BY priority DESC').all();
   let eligibleEntities = [];
   let eligibleTypes = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
 
@@ -79,17 +79,17 @@ function checkEligibility(totalPos, totalDeposit, totalTransfer, months, funding
 }
 
 // Helper: check and update docs status
-function checkAndUpdateDocStatus(requestId) {
-  const docs = db.prepare('SELECT * FROM request_documents WHERE request_id = ?').all(requestId);
+async function checkAndUpdateDocStatus(requestId) {
+  const docs = await db.prepare('SELECT * FROM request_documents WHERE request_id = ?').all(requestId);
   if (docs.length === 0) return;
   const allUploaded = docs.every(d => d.file_path !== null);
   const allValid = docs.every(d => d.status === 'valid');
   if (allUploaded && allValid) {
-    db.prepare("UPDATE requests SET status = 'docs_ready', updated_at = datetime('now') WHERE id = ?").run(requestId);
+    await db.prepare("UPDATE requests SET status = 'docs_ready', updated_at = NOW() WHERE id = ?").run(requestId);
   }
 }
 
-function getRequestForAccess(requestId) {
+async function getRequestForAccess(requestId) {
   return db.prepare('SELECT id, user_id FROM requests WHERE id = ?').get(requestId);
 }
 
@@ -101,7 +101,7 @@ function canAccessRequestChat(request, user) {
 }
 
 // POST /api/requests/eligibility-check — فحص أهلية المنشأة
-router.post('/eligibility-check', authMiddleware, (req, res) => {
+router.post('/eligibility-check', authMiddleware, async (req, res) => {
   try {
     const {
       totalPos = 0, totalDeposit = 0, totalTransfer = 0,
@@ -109,7 +109,7 @@ router.post('/eligibility-check', authMiddleware, (req, res) => {
       recordAgeMonths = 0, ownershipType = 'سعودي', entityType = 'شركة'
     } = req.body;
 
-    const result = checkEligibility(
+    const result = await checkEligibility(
       Number(totalPos), Number(totalDeposit), Number(totalTransfer),
       Number(months), fundingType, bankName,
       Number(recordAgeMonths), ownershipType, entityType
@@ -132,9 +132,9 @@ router.post('/eligibility-check', authMiddleware, (req, res) => {
 });
 
 // GET /api/requests/partners-list — list of approved partners (for broker dropdown)
-router.get('/partners-list', authMiddleware, (req, res) => {
+router.get('/partners-list', authMiddleware, async (req, res) => {
   try {
-    const partners = db.prepare(`
+    const partners = await db.prepare(`
       SELECT id, name, phone, partner_type FROM users
       WHERE role = 'partner' AND status = 'approved'
       ORDER BY name
@@ -146,18 +146,18 @@ router.get('/partners-list', authMiddleware, (req, res) => {
 });
 
 // GET /api/requests
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
-    const requests = db.prepare(`
+    const requests = await db.prepare(`
       SELECT r.*,
              fe.name as funding_entity_name,
              p.name as referred_by_name,
              p.phone as referred_by_phone,
              (SELECT COUNT(*) FROM request_documents rd WHERE rd.request_id = r.id) as doc_total,
              (SELECT COUNT(*) FROM request_documents rd WHERE rd.request_id = r.id AND rd.status = 'valid') as doc_valid,
-             (SELECT json_group_array(json_object('id', bs.id, 'file_name', bs.file_name)) FROM bank_statements bs WHERE bs.request_id = r.id) as bank_statements,
-             (SELECT json_group_array(json_object('id', acs.id, 'file_name', acs.file_name)) FROM account_statements acs WHERE acs.request_id = r.id) as account_statements,
-             (SELECT json_group_array(json_object('id', td.id, 'file_name', td.file_name)) FROM tax_documents td WHERE td.request_id = r.id) as tax_documents
+             (SELECT COALESCE(json_agg(json_build_object('id', bs.id, 'file_name', bs.file_name)) FILTER (WHERE bs.id IS NOT NULL), '[]'::json) FROM bank_statements bs WHERE bs.request_id = r.id) as bank_statements,
+             (SELECT COALESCE(json_agg(json_build_object('id', acs.id, 'file_name', acs.file_name)) FILTER (WHERE acs.id IS NOT NULL), '[]'::json) FROM account_statements acs WHERE acs.request_id = r.id) as account_statements,
+             (SELECT COALESCE(json_agg(json_build_object('id', td.id, 'file_name', td.file_name)) FILTER (WHERE td.id IS NOT NULL), '[]'::json) FROM tax_documents td WHERE td.request_id = r.id) as tax_documents
       FROM requests r
       LEFT JOIN funding_entities fe ON r.funding_entity_id = fe.id
       LEFT JOIN users p ON r.referred_by_id = p.id
@@ -172,32 +172,30 @@ router.get('/', authMiddleware, (req, res) => {
 });
 
 // POST /api/requests
-router.post('/', authMiddleware, (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { funding_type, company_name, entity_type, ownership_type, owners_count, owner_name, owner_phone, referred_by_id } = req.body;
     if (!company_name || !company_name.trim()) {
       return res.status(400).json({ error: 'اسم الشركة / المؤسسة مطلوب' });
     }
-    // Validate partner if provided
     let partnerId = null;
     if (referred_by_id) {
-      const partner = db.prepare("SELECT id FROM users WHERE id = ? AND role = 'partner' AND status = 'approved'").get(referred_by_id);
+      const partner = await db.prepare("SELECT id FROM users WHERE id = ? AND role = 'partner' AND status = 'approved'").get(referred_by_id);
       if (partner) partnerId = partner.id;
     }
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO requests (user_id, funding_type, company_name, entity_type, ownership_type, owners_count, owner_name, owner_phone, referred_by_id, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')
     `).run(req.user.id, funding_type || 'نقاط بيع', company_name.trim(), entity_type || 'شركة', ownership_type || 'سعودي', owners_count || 'شخص واحد', owner_name || null, owner_phone || null, partnerId);
 
     const reqId = result.lastInsertRowid;
 
-    // Auto-save to companies registry
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO companies (company_name, entity_type, owner_name, owner_phone, request_id, user_id)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(company_name.trim(), entity_type || 'شركة', owner_name || null, owner_phone || null, reqId, req.user.id);
 
-    const request = db.prepare('SELECT * FROM requests WHERE id = ?').get(reqId);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ?').get(reqId);
     res.status(201).json(request);
   } catch (err) {
     console.error(err);
@@ -206,9 +204,9 @@ router.post('/', authMiddleware, (req, res) => {
 });
 
 // GET /api/requests/:id
-router.get('/:id', authMiddleware, (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const request = db.prepare(`
+    const request = await db.prepare(`
       SELECT r.*, fe.name as funding_entity_name, fe.whatsapp_number as fe_whatsapp,
              fe.required_documents as fe_required_docs,
              u.name as user_name, u.phone as user_phone, u.email as user_email,
@@ -222,11 +220,11 @@ router.get('/:id', authMiddleware, (req, res) => {
 
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
-    const bankStatements = db.prepare('SELECT * FROM bank_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
-    const accountStatements = db.prepare('SELECT * FROM account_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
-    const taxDocuments = db.prepare('SELECT * FROM tax_documents WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
-    const documents = db.prepare('SELECT * FROM request_documents WHERE request_id = ? ORDER BY id').all(req.params.id);
-    const statusHistory = db.prepare(`
+    const bankStatements = await db.prepare('SELECT * FROM bank_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
+    const accountStatements = await db.prepare('SELECT * FROM account_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
+    const taxDocuments = await db.prepare('SELECT * FROM tax_documents WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
+    const documents = await db.prepare('SELECT * FROM request_documents WHERE request_id = ? ORDER BY id').all(req.params.id);
+    const statusHistory = await db.prepare(`
       SELECT sh.*, u.name as created_by_name
       FROM status_history sh
       LEFT JOIN users u ON sh.created_by = u.id
@@ -244,13 +242,13 @@ router.get('/:id', authMiddleware, (req, res) => {
 });
 
 // GET /api/requests/:id/messages — internal chat (admin + employee owner)
-router.get('/:id/messages', authMiddleware, (req, res) => {
+router.get('/:id/messages', authMiddleware, async (req, res) => {
   try {
-    const request = getRequestForAccess(req.params.id);
+    const request = await getRequestForAccess(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (!canAccessRequestChat(request, req.user)) return res.status(403).json({ error: 'غير مصرح' });
 
-    const messages = db.prepare(`
+    const messages = await db.prepare(`
       SELECT rm.id, rm.request_id, rm.sender_id, rm.message, rm.created_at,
              u.name as sender_name, u.role as sender_role
       FROM request_messages rm
@@ -267,19 +265,19 @@ router.get('/:id/messages', authMiddleware, (req, res) => {
 });
 
 // POST /api/requests/:id/messages — send internal chat message
-router.post('/:id/messages', authMiddleware, (req, res) => {
+router.post('/:id/messages', authMiddleware, async (req, res) => {
   try {
-    const request = getRequestForAccess(req.params.id);
+    const request = await getRequestForAccess(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (!canAccessRequestChat(request, req.user)) return res.status(403).json({ error: 'غير مصرح' });
 
     const message = String(req.body?.message || '').trim();
     if (!message) return res.status(400).json({ error: 'نص الرسالة مطلوب' });
 
-    const r = db.prepare('INSERT INTO request_messages (request_id, sender_id, message) VALUES (?, ?, ?)')
+    const r = await db.prepare('INSERT INTO request_messages (request_id, sender_id, message) VALUES (?, ?, ?)')
       .run(req.params.id, req.user.id, message);
 
-    const created = db.prepare(`
+    const created = await db.prepare(`
       SELECT rm.id, rm.request_id, rm.sender_id, rm.message, rm.created_at,
              u.name as sender_name, u.role as sender_role
       FROM request_messages rm
@@ -295,38 +293,37 @@ router.post('/:id/messages', authMiddleware, (req, res) => {
 });
 
 // GET /api/messages/unread-count — عدد الرسائل غير المقروءة في جميع الطلبات
-router.get('/messages/unread-count', authMiddleware, (req, res) => {
+router.get('/messages/unread-count', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const role   = req.user.role;
-    // Admin: all requests. Employee/Partner: own requests
-    const count = role === 'admin'
-      ? db.prepare(`
+    const row = role === 'admin'
+      ? await db.prepare(`
           SELECT COUNT(*) as c FROM request_messages rm
           LEFT JOIN message_reads mr ON mr.user_id = ? AND mr.request_id = rm.request_id
           WHERE rm.sender_id != ?
             AND (mr.last_read_at IS NULL OR rm.created_at > mr.last_read_at)
-        `).get(userId, userId).c
-      : db.prepare(`
+        `).get(userId, userId)
+      : await db.prepare(`
           SELECT COUNT(*) as c FROM request_messages rm
           JOIN requests r ON r.id = rm.request_id
           LEFT JOIN message_reads mr ON mr.user_id = ? AND mr.request_id = rm.request_id
           WHERE r.user_id = ? AND rm.sender_id != ?
             AND (mr.last_read_at IS NULL OR rm.created_at > mr.last_read_at)
-        `).get(userId, userId, userId).c;
-    res.json({ count: count || 0 });
+        `).get(userId, userId, userId);
+    res.json({ count: row?.c || 0 });
   } catch (err) {
     res.status(500).json({ count: 0 });
   }
 });
 
 // POST /api/requests/:id/mark-read — تحديد رسائل الطلب كمقروءة
-router.post('/:id/mark-read', authMiddleware, (req, res) => {
+router.post('/:id/mark-read', authMiddleware, async (req, res) => {
   try {
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO message_reads (user_id, request_id, last_read_at)
-      VALUES (?, ?, datetime('now'))
-      ON CONFLICT(user_id, request_id) DO UPDATE SET last_read_at = datetime('now')
+      VALUES (?, ?, NOW())
+      ON CONFLICT(user_id, request_id) DO UPDATE SET last_read_at = NOW()
     `).run(req.user.id, req.params.id);
     res.json({ ok: true });
   } catch (err) {
@@ -337,20 +334,20 @@ router.post('/:id/mark-read', authMiddleware, (req, res) => {
 // POST /api/requests/:id/bank-statements
 router.post('/:id/bank-statements', authMiddleware, bankUpload.array('files', 15), async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'لم يتم رفع أي ملف' });
 
     const inserted = [];
     for (const file of req.files) {
-      const r = db.prepare(`
+      const r = await db.prepare(`
         INSERT INTO bank_statements (request_id, file_path, file_name, analysis_status)
         VALUES (?, ?, ?, 'pending')
       `).run(req.params.id, file.path, file.originalname);
       inserted.push({ id: r.lastInsertRowid, file_name: file.originalname });
     }
 
-    db.prepare("UPDATE requests SET status = 'bank_uploaded', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+    await db.prepare("UPDATE requests SET status = 'bank_uploaded', updated_at = NOW() WHERE id = ?").run(req.params.id);
     res.json({ message: `تم رفع ${req.files.length} كشف بنجاح`, statements: inserted });
   } catch (err) {
     console.error(err);
@@ -361,13 +358,13 @@ router.post('/:id/bank-statements', authMiddleware, bankUpload.array('files', 15
 // POST /api/requests/:id/analyze-banks
 router.post('/:id/analyze-banks', authMiddleware, async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
-    const statements = db.prepare("SELECT * FROM bank_statements WHERE request_id = ? AND analysis_status = 'pending'").all(req.params.id);
+    const statements = await db.prepare("SELECT * FROM bank_statements WHERE request_id = ? AND analysis_status = 'pending'").all(req.params.id);
     if (statements.length === 0) return res.status(400).json({ error: 'لا توجد كشوفات جديدة للتحليل' });
 
-    db.prepare("UPDATE requests SET status = 'analyzing', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+    await db.prepare("UPDATE requests SET status = 'analyzing', updated_at = NOW() WHERE id = ?").run(req.params.id);
 
     let totalPos = 0, totalDeposit = 0, totalTransfer = 0;
     const details = [];
@@ -376,7 +373,7 @@ router.post('/:id/analyze-banks', authMiddleware, async (req, res) => {
     for (const stmt of statements) {
       try {
         const analysis = await analyzeBankStatement(stmt.file_path, stmt.file_name);
-        db.prepare(`
+        await db.prepare(`
           UPDATE bank_statements SET
             pos_amount = ?, deposit_amount = ?, transfer_amount = ?,
             period_label = ?, analysis_status = 'done', analysis_data = ?
@@ -388,13 +385,13 @@ router.post('/:id/analyze-banks', authMiddleware, async (req, res) => {
         totalTransfer += analysis.total_transfer;
         details.push({ stmt_id: stmt.id, ...analysis });
       } catch (aiErr) {
-        db.prepare("UPDATE bank_statements SET analysis_status = 'failed' WHERE id = ?").run(stmt.id);
+        await db.prepare("UPDATE bank_statements SET analysis_status = 'failed' WHERE id = ?").run(stmt.id);
         errors.push({ stmt_id: stmt.id, file: stmt.file_name, error: aiErr.message });
       }
     }
 
     // Add previously analyzed statements
-    const prevAnalyzed = db.prepare("SELECT * FROM bank_statements WHERE request_id = ? AND analysis_status = 'done'").all(req.params.id);
+    const prevAnalyzed = await db.prepare("SELECT * FROM bank_statements WHERE request_id = ? AND analysis_status = 'done'").all(req.params.id);
     for (const ps of prevAnalyzed) {
       if (!details.find(d => d.stmt_id === ps.id)) {
         totalPos += ps.pos_amount;
@@ -403,19 +400,19 @@ router.post('/:id/analyze-banks', authMiddleware, async (req, res) => {
       }
     }
 
-    const monthCount = db.prepare("SELECT COUNT(*) as c FROM bank_statements WHERE request_id = ? AND analysis_status = 'done'").get(req.params.id).c;
-    const firstStmt = db.prepare("SELECT * FROM bank_statements WHERE request_id = ? LIMIT 1").get(req.params.id);
+    const monthCount = (await db.prepare("SELECT COUNT(*) as c FROM bank_statements WHERE request_id = ? AND analysis_status = 'done'").get(req.params.id)).c;
+    const firstStmt = await db.prepare("SELECT * FROM bank_statements WHERE request_id = ? LIMIT 1").get(req.params.id);
     const bankName = firstStmt ? (JSON.parse(firstStmt.analysis_data || '{}').bank_name || '') : '';
-    const recordAgeMonths = monthCount; // Assume record age is the number of months analyzed
-    const eligibility = checkEligibility(totalPos, totalDeposit, totalTransfer, monthCount, request.funding_type, bankName, recordAgeMonths, request.ownership_type, request.entity_type);
+    const recordAgeMonths = monthCount;
+    const eligibility = await checkEligibility(totalPos, totalDeposit, totalTransfer, monthCount, request.funding_type, bankName, recordAgeMonths, request.ownership_type, request.entity_type);
     const eligibleEntities = eligibility.entities;
     const eligibleTypes = eligibility.types;
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE requests SET
         total_pos = ?, total_deposit = ?, total_transfer = ?,
         statement_months = ?, status = 'analyzed',
-        analysis_result = ?, updated_at = datetime('now')
+        analysis_result = ?, updated_at = NOW()
       WHERE id = ?
     `).run(totalPos, totalDeposit, totalTransfer, monthCount,
            JSON.stringify({ details, eligible_entities: eligibleEntities, eligible_types: eligibleTypes, errors }),
@@ -431,13 +428,13 @@ router.post('/:id/analyze-banks', authMiddleware, async (req, res) => {
 // POST /api/requests/:id/account-statements
 router.post('/:id/account-statements', authMiddleware, accountUpload.array('files', 15), async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'لم يتم رفع أي ملف' });
 
     const inserted = [];
     for (const file of req.files) {
-      const r = db.prepare(`
+      const r = await db.prepare(`
         INSERT INTO account_statements (request_id, file_path, file_name)
         VALUES (?, ?, ?)
       `).run(req.params.id, file.path, file.originalname);
@@ -454,13 +451,13 @@ router.post('/:id/account-statements', authMiddleware, accountUpload.array('file
 // POST /api/requests/:id/tax-documents
 router.post('/:id/tax-documents', authMiddleware, taxUpload.array('files', 15), async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'لم يتم رفع أي ملف' });
 
     const inserted = [];
     for (const file of req.files) {
-      const r = db.prepare(`
+      const r = await db.prepare(`
         INSERT INTO tax_documents (request_id, file_path, file_name)
         VALUES (?, ?, ?)
       `).run(req.params.id, file.path, file.originalname);
@@ -475,25 +472,24 @@ router.post('/:id/tax-documents', authMiddleware, taxUpload.array('files', 15), 
 });
 
 // POST /api/requests/:id/select-entity
-router.post('/:id/select-entity', authMiddleware, (req, res) => {
+router.post('/:id/select-entity', authMiddleware, async (req, res) => {
   try {
     const { funding_entity_id } = req.body;
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
-    const entity = db.prepare('SELECT * FROM funding_entities WHERE id = ?').get(funding_entity_id);
+    const entity = await db.prepare('SELECT * FROM funding_entities WHERE id = ?').get(funding_entity_id);
     if (!entity) return res.status(404).json({ error: 'الجهة التمويلية غير موجودة' });
 
     const requiredDocs = JSON.parse(entity.required_documents || '[]');
 
     // Reset documents for new entity selection
-    db.prepare('DELETE FROM request_documents WHERE request_id = ?').run(req.params.id);
-    const insertDoc = db.prepare("INSERT INTO request_documents (request_id, document_name, status) VALUES (?, ?, 'missing')");
+    await db.prepare('DELETE FROM request_documents WHERE request_id = ?').run(req.params.id);
     for (const docName of requiredDocs) {
-      insertDoc.run(req.params.id, docName);
+      await db.prepare("INSERT INTO request_documents (request_id, document_name, status) VALUES (?, ?, 'missing')").run(req.params.id, docName);
     }
 
-    db.prepare("UPDATE requests SET funding_entity_id = ?, status = 'docs_pending', updated_at = datetime('now') WHERE id = ?").run(funding_entity_id, req.params.id);
+    await db.prepare("UPDATE requests SET funding_entity_id = ?, status = 'docs_pending', updated_at = NOW() WHERE id = ?").run(funding_entity_id, req.params.id);
 
     res.json({ message: 'تم اختيار الجهة التمويلية', required_documents: requiredDocs });
   } catch (err) {
@@ -505,10 +501,10 @@ router.post('/:id/select-entity', authMiddleware, (req, res) => {
 // POST /api/requests/:id/documents/:docId/upload
 router.post('/:id/documents/:docId/upload', authMiddleware, docUpload.single('file'), async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
-    const doc = db.prepare('SELECT * FROM request_documents WHERE id = ? AND request_id = ?').get(req.params.docId, req.params.id);
+    const doc = await db.prepare('SELECT * FROM request_documents WHERE id = ? AND request_id = ?').get(req.params.docId, req.params.id);
     if (!doc) return res.status(404).json({ error: 'المستند غير موجود' });
     if (!req.file) return res.status(400).json({ error: 'لم يتم رفع الملف' });
 
@@ -522,17 +518,16 @@ router.post('/:id/documents/:docId/upload', authMiddleware, docUpload.single('fi
       docStatus = aiResult.is_expired ? 'expired' : 'valid';
     } catch (aiErr) {
       console.error('Doc AI error:', aiErr.message);
-      // Don't fail the upload if AI fails, mark as valid and let admin review
       docStatus = 'valid';
     }
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE request_documents SET
-        file_path = ?, file_name = ?, expiry_date = ?, status = ?, uploaded_at = datetime('now')
+        file_path = ?, file_name = ?, expiry_date = ?, status = ?, uploaded_at = NOW()
       WHERE id = ?
     `).run(req.file.path, req.file.originalname, expiryDate, docStatus, req.params.docId);
 
-    checkAndUpdateDocStatus(req.params.id);
+    await checkAndUpdateDocStatus(req.params.id);
 
     res.json({
       message: docStatus === 'expired' ? '⚠️ تحذير: المستند منتهي الصلاحية! يرجى تحديثه.' : 'تم رفع المستند بنجاح',
@@ -547,11 +542,11 @@ router.post('/:id/documents/:docId/upload', authMiddleware, docUpload.single('fi
 });
 
 // POST /api/requests/:id/mark-forms-sent
-router.post('/:id/mark-forms-sent', authMiddleware, (req, res) => {
+router.post('/:id/mark-forms-sent', authMiddleware, async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
-    db.prepare("UPDATE requests SET status = 'forms_sent', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+    await db.prepare("UPDATE requests SET status = 'forms_sent', updated_at = NOW() WHERE id = ?").run(req.params.id);
     res.json({ message: 'تم تأكيد رفع النماذج للجهة التمويلية' });
   } catch (err) {
     res.status(500).json({ error: 'خطأ' });
@@ -559,24 +554,24 @@ router.post('/:id/mark-forms-sent', authMiddleware, (req, res) => {
 });
 
 // POST /api/requests/:id/submit-file
-router.post('/:id/submit-file', authMiddleware, completeUpload.single('file'), (req, res) => {
+router.post('/:id/submit-file', authMiddleware, completeUpload.single('file'), async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
     const filePath = req.file ? req.file.path : null;
     const fileName = req.file ? req.file.originalname : null;
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE requests SET
         status = 'file_submitted',
         complete_file_path = ?,
         complete_file_name = ?,
-        updated_at = datetime('now')
+        updated_at = NOW()
       WHERE id = ?
     `).run(filePath, fileName, req.params.id);
 
-    db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
       req.params.id, 'file_submitted', 'تم رفع الملف الكامل من الموظف', req.user.id
     );
 
@@ -588,13 +583,13 @@ router.post('/:id/submit-file', authMiddleware, completeUpload.single('file'), (
 });
 
 // POST /api/requests/:id/submit-missing
-router.post('/:id/submit-missing', authMiddleware, (req, res) => {
+router.post('/:id/submit-missing', authMiddleware, async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
-    db.prepare("UPDATE requests SET status = 'missing_submitted', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
-    db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
+    await db.prepare("UPDATE requests SET status = 'missing_submitted', updated_at = NOW() WHERE id = ?").run(req.params.id);
+    await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
       req.params.id, 'missing_submitted', 'تم إرسال النواقص من الموظف', req.user.id
     );
 
@@ -605,28 +600,26 @@ router.post('/:id/submit-missing', authMiddleware, (req, res) => {
 });
 
 // POST /api/requests/:id/upload-consultation-contract — employee uploads consultation contract
-router.post('/:id/upload-consultation-contract', authMiddleware, contractUpload.single('file'), (req, res) => {
+router.post('/:id/upload-consultation-contract', authMiddleware, contractUpload.single('file'), async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (!req.file) return res.status(400).json({ error: 'لم يتم رفع أي ملف' });
 
-    // Save to contracts table
-    db.prepare(
+    await db.prepare(
       'INSERT INTO contracts (request_id, contract_type, file_path, file_name, uploaded_by) VALUES (?, ?, ?, ?, ?)'
     ).run(req.params.id, 'consultation', req.file.path, req.file.originalname, req.user.id);
 
-    // Update request columns for quick access
-    db.prepare(`
+    await db.prepare(`
       UPDATE requests SET
         consultation_contract_path = ?,
         consultation_contract_name = ?,
         status = 'contract_submitted',
-        updated_at = datetime('now')
+        updated_at = NOW()
       WHERE id = ?
     `).run(req.file.path, req.file.originalname, req.params.id);
 
-    db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
       req.params.id, 'contract_submitted', 'تم رفع عقد الاستشارات وإرساله للمدير', req.user.id
     );
 
@@ -638,39 +631,36 @@ router.post('/:id/upload-consultation-contract', authMiddleware, contractUpload.
 });
 
 // PUT /api/requests/:id — edit basic request info
-router.put('/:id', authMiddleware, (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
-    // only owner or admin can edit
     if (req.user.role !== 'admin' && request.user_id !== req.user.id) {
       return res.status(403).json({ error: 'غير مصرح' });
     }
     const { company_name, owner_name, owner_phone, entity_type, ownership_type, funding_type, referred_by_id } = req.body;
     if (!company_name || !company_name.trim()) return res.status(400).json({ error: 'اسم الشركة مطلوب' });
-    // validate partner
     let partnerId = request.referred_by_id;
     if (referred_by_id !== undefined) {
       if (referred_by_id) {
-        const partner = db.prepare("SELECT id FROM users WHERE id = ? AND role = 'partner' AND status = 'approved'").get(referred_by_id);
+        const partner = await db.prepare("SELECT id FROM users WHERE id = ? AND role = 'partner' AND status = 'approved'").get(referred_by_id);
         partnerId = partner ? partner.id : null;
       } else { partnerId = null; }
     }
-    db.prepare(`
+    await db.prepare(`
       UPDATE requests SET
         company_name = ?, owner_name = ?, owner_phone = ?,
         entity_type = ?, ownership_type = ?, funding_type = ?,
-        referred_by_id = ?, updated_at = datetime('now')
+        referred_by_id = ?, updated_at = NOW()
       WHERE id = ?`
     ).run(
       company_name.trim(), owner_name || null, owner_phone || null,
       entity_type || request.entity_type, ownership_type || request.ownership_type,
       funding_type || request.funding_type, partnerId, req.params.id
     );
-    // sync companies table
-    db.prepare('UPDATE companies SET company_name = ?, entity_type = ?, owner_name = ?, owner_phone = ? WHERE request_id = ?')
+    await db.prepare('UPDATE companies SET company_name = ?, entity_type = ?, owner_name = ?, owner_phone = ? WHERE request_id = ?')
       .run(company_name.trim(), entity_type || request.entity_type, owner_name || null, owner_phone || null, req.params.id);
-    const updated = db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
+    const updated = await db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -679,15 +669,15 @@ router.put('/:id', authMiddleware, (req, res) => {
 });
 
 // DELETE /api/requests/:id — admin hard delete
-router.delete('/:id', authMiddleware, (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'المدير فقط يمكنه الحذف' });
-    const request = db.prepare('SELECT id FROM requests WHERE id = ?').get(req.params.id);
+    const request = await db.prepare('SELECT id FROM requests WHERE id = ?').get(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
-    db.prepare('DELETE FROM status_history WHERE request_id = ?').run(req.params.id);
-    db.prepare('DELETE FROM request_messages WHERE request_id = ?').run(req.params.id);
-    db.prepare('DELETE FROM documents WHERE request_id = ?').run(req.params.id);
-    db.prepare('DELETE FROM requests WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM status_history WHERE request_id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM request_messages WHERE request_id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM request_documents WHERE request_id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM requests WHERE id = ?').run(req.params.id);
     res.json({ message: 'تم حذف الطلب' });
   } catch (err) {
     console.error(err);
@@ -696,9 +686,9 @@ router.delete('/:id', authMiddleware, (req, res) => {
 });
 
 // POST /api/requests/:id/request-delete
-router.post('/:id/request-delete', authMiddleware, (req, res) => {
+router.post('/:id/request-delete', authMiddleware, async (req, res) => {
   try {
-    const request = db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (['approved', 'transferred', 'fees_received'].includes(request.status)) {
       return res.status(400).json({ error: 'لا يمكن حذف طلب تمت الموافقة عليه' });
@@ -706,9 +696,9 @@ router.post('/:id/request-delete', authMiddleware, (req, res) => {
     const { reason } = req.body;
     if (!reason || !reason.trim()) return res.status(400).json({ error: 'سبب الحذف مطلوب' });
 
-    db.prepare(`UPDATE requests SET status = 'delete_requested', delete_reason = ?, updated_at = datetime('now') WHERE id = ?`)
+    await db.prepare(`UPDATE requests SET status = 'delete_requested', delete_reason = ?, updated_at = NOW() WHERE id = ?`)
       .run(reason.trim(), req.params.id);
-    db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)')
+    await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)')
       .run(req.params.id, 'delete_requested', `طلب حذف - السبب: ${reason.trim()}`, req.user.id);
 
     res.json({ message: 'تم إرسال طلب الحذف للمدير' });
@@ -718,9 +708,9 @@ router.post('/:id/request-delete', authMiddleware, (req, res) => {
 });
 
 // GET /api/requests/clients-summary - list of companies submitted to funding
-router.get('/clients-summary/all', authMiddleware, (req, res) => {
+router.get('/clients-summary/all', authMiddleware, async (req, res) => {
   try {
-    const clients = db.prepare(`
+    const clients = await db.prepare(`
       SELECT DISTINCT
         r.id,
         r.company_name,
@@ -735,10 +725,10 @@ router.get('/clients-summary/all', authMiddleware, (req, res) => {
         r.status
       FROM requests r
       LEFT JOIN funding_entities fe ON r.funding_entity_id = fe.id
-      WHERE r.user_id = ? AND r.status = 'submitted' OR r.status = 'approved' OR r.status = 'transferred' OR r.status = 'fees_received'
+      WHERE r.user_id = ? AND r.status IN ('submitted','approved','transferred','fees_received')
       ORDER BY r.created_at DESC
     `).all(req.user.id);
-    
+
     res.json(clients);
   } catch (err) {
     console.error(err);
