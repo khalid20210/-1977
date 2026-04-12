@@ -1,0 +1,284 @@
+import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  CheckCircle, XCircle, AlertCircle, Search, Building2,
+  Loader, Lightbulb, ChevronDown, ClipboardCheck
+} from 'lucide-react';
+
+const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
+const ENTITY_TYPES  = ['شركة', 'مؤسسة', 'شخص واحد'];
+const OWNERSHIP_TYPES = ['سعودي', 'غير سعودي'];
+
+const SAR = n => `${Number(n).toLocaleString('ar-SA', { maximumFractionDigits: 0 })} ر.س`;
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="text-xs font-semibold text-gray-600 block mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Select({ value, onChange, options }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={onChange}
+        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none appearance-none bg-white"
+      >
+        {options.map(o => <option key={o}>{o}</option>)}
+      </select>
+      <ChevronDown size={14} className="absolute left-3 top-3 text-gray-400 pointer-events-none" />
+    </div>
+  );
+}
+
+function NumberInput({ value, onChange, placeholder = '0' }) {
+  return (
+    <input
+      type="number"
+      min="0"
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
+    />
+  );
+}
+
+export default function Eligibility() {
+  const { authFetch, isAdmin } = useAuth();
+
+  const [form, setForm] = useState({
+    fundingType:    'نقاط بيع',
+    entityType:     'شركة',
+    ownershipType:  'سعودي',
+    bankName:       '',
+    totalPos:       '',
+    totalDeposit:   '',
+    totalTransfer:  '',
+    months:         '12',
+    recordAgeMonths:'24',
+  });
+
+  const [result,  setResult]  = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setChecked(false);
+    try {
+      const res = await authFetch('/api/requests/eligibility-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          totalPos:        Number(form.totalPos)        || 0,
+          totalDeposit:    Number(form.totalDeposit)    || 0,
+          totalTransfer:   Number(form.totalTransfer)   || 0,
+          months:          Number(form.months)          || 12,
+          fundingType:     form.fundingType,
+          bankName:        form.bankName,
+          recordAgeMonths: Number(form.recordAgeMonths) || 0,
+          ownershipType:   form.ownershipType,
+          entityType:      form.entityType,
+        }),
+      });
+      if (res.ok) {
+        setResult(await res.json());
+        setChecked(true);
+      }
+    } catch (_) {}
+    setLoading(false);
+  };
+
+  const eligible = checked && result?.entities?.length > 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+          <ClipboardCheck size={24} className="text-blue-500" />
+          فاحص أهلية المنشأة
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">أدخل بيانات المنشأة لمعرفة مدى أهليتها للتمويل والجهات المناسبة</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+        {/* ─── Form ─── */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <h2 className="font-bold text-gray-800 mb-5 flex items-center gap-2">
+            <Building2 size={17} className="text-blue-500" /> بيانات المنشأة
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="نوع التمويل">
+                <Select value={form.fundingType} onChange={set('fundingType')} options={FUNDING_TYPES} />
+              </Field>
+              <Field label="نوع المنشأة">
+                <Select value={form.entityType} onChange={set('entityType')} options={ENTITY_TYPES} />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="نوع الملكية">
+                <Select value={form.ownershipType} onChange={set('ownershipType')} options={OWNERSHIP_TYPES} />
+              </Field>
+              <Field label="البنك الرئيسي">
+                <input
+                  value={form.bankName}
+                  onChange={set('bankName')}
+                  placeholder="مثال: الراجحي"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                />
+              </Field>
+            </div>
+
+            {form.fundingType === 'نقاط بيع' && (
+              <Field label="إجمالي نقاط البيع — 12 شهر (ر.س)">
+                <NumberInput value={form.totalPos} onChange={set('totalPos')} placeholder="مثال: 1500000" />
+              </Field>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="إجمالي الإيداعات (ر.س)">
+                <NumberInput value={form.totalDeposit} onChange={set('totalDeposit')} />
+              </Field>
+              <Field label="إجمالي التحويلات (ر.س)">
+                <NumberInput value={form.totalTransfer} onChange={set('totalTransfer')} />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="عدد أشهر الكشف">
+                <NumberInput value={form.months} onChange={set('months')} placeholder="12" />
+              </Field>
+              <Field label="عمر السجل التجاري (شهر)">
+                <NumberInput value={form.recordAgeMonths} onChange={set('recordAgeMonths')} placeholder="24" />
+              </Field>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
+            >
+              {loading ? <Loader size={16} className="animate-spin" /> : <Search size={16} />}
+              {loading ? 'جارٍ الفحص...' : 'فحص الأهلية'}
+            </button>
+          </form>
+        </div>
+
+        {/* ─── Results ─── */}
+        <div className="lg:col-span-3 space-y-4">
+
+          {!checked ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-24 text-gray-300">
+              <Search size={52} className="mb-3 opacity-25" />
+              <p className="text-sm text-gray-400">أدخل البيانات واضغط "فحص الأهلية"</p>
+            </div>
+          ) : (
+            <>
+              {/* Status Banner */}
+              <div className={`rounded-2xl border p-5 flex items-center gap-3 ${eligible ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                {eligible
+                  ? <CheckCircle size={24} className="text-green-500 shrink-0" />
+                  : <XCircle    size={24} className="text-red-500 shrink-0" />}
+                <div>
+                  <p className={`font-bold text-lg ${eligible ? 'text-green-700' : 'text-red-700'}`}>
+                    {eligible ? 'المنشأة مؤهلة للتمويل' : 'المنشأة غير مؤهلة حالياً'}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${eligible ? 'text-green-600' : 'text-red-500'}`}>
+                    {eligible
+                      ? `وجدنا ${result.entities.length} جهة تمويلية مناسبة`
+                      : 'لا تستوفي المنشأة شروط التمويل المتاحة حالياً'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Eligible Entities — للأدمن فقط */}
+              {eligible && isAdmin && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="font-bold text-gray-800 mb-4">الجهات التمويلية المناسبة</h3>
+                  <div className="space-y-3">
+                    {result.entities.map(e => (
+                      <div key={e.id} className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                        <CheckCircle size={18} className="text-blue-500 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-bold text-gray-800 text-sm">{e.name}</p>
+                          {e.notes && <p className="text-xs text-gray-500 mt-1">{e.notes}</p>}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {e.min_pos_amount > 0 && (
+                              <span className="text-xs bg-white border border-blue-100 rounded-full px-2 py-0.5 text-blue-600">
+                                حد أدنى POS: {SAR(e.min_pos_amount)}
+                              </span>
+                            )}
+                            {e.min_months > 0 && (
+                              <span className="text-xs bg-white border border-blue-100 rounded-full px-2 py-0.5 text-blue-600">
+                                {e.min_months} أشهر كشف
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* رسالة للموظف/الشريك — لا يرى الجهات */}
+              {eligible && !isAdmin && (
+                <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5 flex items-start gap-3">
+                  <CheckCircle size={20} className="text-blue-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-blue-800 text-sm">المنشأة مؤهلة للتمويل</p>
+                    <p className="text-xs text-blue-600 mt-1">يرجى رفع طلب وإرسال الملف الكامل — سيتولى المسؤول تحديد الجهة التمويلية المناسبة</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Tips */}
+              {result?.tips?.length > 0 && (
+                <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lightbulb size={17} className="text-amber-500" />
+                    <h3 className="font-bold text-amber-800 text-sm">توصيات لتحسين الأهلية</h3>
+                  </div>
+                  <ul className="space-y-2">
+                    {result.tips.map((tip, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-amber-700">
+                        <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Not eligible tips if no entities */}
+              {!eligible && !result?.tips?.length && (
+                <div className="bg-orange-50 rounded-2xl border border-orange-200 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle size={17} className="text-orange-500" />
+                    <h3 className="font-bold text-orange-800 text-sm">خطوات مقترحة</h3>
+                  </div>
+                  <ul className="space-y-1 text-xs text-orange-700 list-disc list-inside">
+                    <li>تواصل مع مسؤول المبيعات لمراجعة الحالة يدوياً</li>
+                    <li>يمكن رفع طلب وسيتم تحليله من قِبل الفريق</li>
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
