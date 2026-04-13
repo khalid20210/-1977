@@ -320,7 +320,7 @@ async function initDatabase() {
   )`);
 
 
-  await pool.query(CREATE TABLE IF NOT EXISTS notifications (
+  await pool.query(`CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     type TEXT NOT NULL DEFAULT 'general',
@@ -329,19 +329,7 @@ async function initDatabase() {
     link TEXT,
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
-  ));
-
-
-  await pool.query(\CREATE TABLE IF NOT EXISTS notifications (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    type TEXT NOT NULL DEFAULT 'general',
-    title TEXT NOT NULL,
-    body TEXT,
-    link TEXT,
-    is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
-  )\);
+  )`);
 
   // ===== Seed default settings =====
   const defaultSettings = [
