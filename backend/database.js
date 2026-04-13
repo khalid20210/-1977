@@ -6,6 +6,10 @@ types.setTypeParser(20, parseInt);
 
 require('dotenv').config();
 
+const primaryAdminName = (process.env.PRIMARY_ADMIN_NAME || 'المدير الرئيسي').trim();
+const primaryAdminEmail = (process.env.PRIMARY_ADMIN_EMAIL || '').trim().toLowerCase();
+const primaryAdminPassword = process.env.PRIMARY_ADMIN_PASSWORD || '';
+
 const pool = new Pool(
   process.env.DATABASE_URL
     ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
@@ -348,15 +352,24 @@ async function initDatabase() {
     );
   }
 
-  // ===== Seed default admin user =====
-  const adminCheck = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
-  if (adminCheck.rows.length === 0) {
-    const hashed = await bcrypt.hash('Admin@12345', 12);
-    await pool.query(
-      "INSERT INTO users (name, email, password, role, status) VALUES ($1, $2, $3, 'admin', 'approved')",
-      ['المدير الرئيسي', 'admin@weseet.com', hashed]
-    );
-    console.log('✅ حساب الأدمن: admin@weseet.com | Admin@12345');
+  // ===== Seed or sync primary admin user from environment =====
+  const adminCheck = await pool.query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+  if (primaryAdminEmail && primaryAdminPassword) {
+    const hashed = await bcrypt.hash(primaryAdminPassword, 12);
+    if (adminCheck.rows.length === 0) {
+      await pool.query(
+        "INSERT INTO users (name, email, password, role, status) VALUES ($1, $2, $3, 'admin', 'approved')",
+        [primaryAdminName, primaryAdminEmail, hashed]
+      );
+    } else {
+      await pool.query(
+        "UPDATE users SET name = $1, email = $2, password = $3, status = 'approved' WHERE id = $4",
+        [primaryAdminName, primaryAdminEmail, hashed, adminCheck.rows[0].id]
+      );
+    }
+    console.log(`✅ تم تهيئة حساب المدير الأساسي: ${primaryAdminEmail}`);
+  } else if (adminCheck.rows.length === 0) {
+    console.warn('⚠️ لم يتم إنشاء حساب مدير افتراضي لأن PRIMARY_ADMIN_EMAIL أو PRIMARY_ADMIN_PASSWORD غير مضبوطين');
   }
 
   // ===== Seed default funding entities =====

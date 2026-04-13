@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const db = require('../database');
 
+const jwtSecret = process.env.JWT_SECRET;
+
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -8,7 +10,8 @@ const authMiddleware = async (req, res, next) => {
   }
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'weseet_super_secret_jwt_key_change_in_production_2024');
+    if (!jwtSecret) return res.status(500).json({ error: 'إعدادات المصادقة غير مكتملة' });
+    const decoded = jwt.verify(token, jwtSecret);
     const user = await db.prepare('SELECT id, name, email, role, status, phone FROM users WHERE id = ?').get(decoded.id);
     if (!user) return res.status(401).json({ error: 'المستخدم غير موجود' });
     if (user.status === 'blocked') return res.status(403).json({ error: 'تم حظر حسابك. تواصل مع الإدارة.' });

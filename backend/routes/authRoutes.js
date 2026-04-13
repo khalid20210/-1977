@@ -5,6 +5,7 @@ const db = require('../database');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+const jwtSecret = process.env.JWT_SECRET;
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -35,6 +36,7 @@ router.post('/register', async (req, res) => {
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
+    if (!jwtSecret) return res.status(500).json({ error: 'إعدادات المصادقة غير مكتملة' });
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'البريد وكلمة المرور مطلوبان' });
 
@@ -49,7 +51,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET || 'weseet_super_secret_jwt_key_change_in_production_2024',
+      jwtSecret,
       { expiresIn: '7d' }
     );
 
