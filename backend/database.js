@@ -6,9 +6,11 @@ types.setTypeParser(20, parseInt);
 
 require('dotenv').config();
 
-const pool = new Pool({
-  ssl: { rejectUnauthorized: false }
-});
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+    : { ssl: { rejectUnauthorized: false } }
+);
 
 // Convert ? placeholders -> $1, $2, ... for PostgreSQL
 function toPostgresParams(sql) {
