@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, BarChart2, FileText, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 const features = [
   { title: 'تحليل أهليتك للتسهيلات التمويلية', desc: 'تحليل ذكي لبيانات المنشآت والكشوفات', Icon: BarChart2 },
   { title: 'إدارة المستندات', desc: 'رفع وتنظيم ملفات المنشأة والعقود', Icon: FileText },
@@ -22,12 +24,20 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(API_BASE + '/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, password: form.password }),
       });
-      const data = await res.json();
+
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { message: 'الخادم أعاد استجابة غير متوقعة' };
+      }
+
       if (!res.ok) throw new Error(data.message || 'بيانات الدخول غير صحيحة');
       login(data.token, data.user);
       navigate('/dashboard');
