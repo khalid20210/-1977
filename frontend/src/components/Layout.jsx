@@ -111,8 +111,12 @@ export default function Layout({ children }) {
     <div className={`flex flex-col h-full ${mobile ? '' : ''}`}>
       {/* الشعار */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-        <div className="select-none flex-shrink-0">
-          <img src="/logo.svg" alt="JenanBiz" style={{ height: 54, filter: 'brightness(0) invert(1)' }} />
+        <div className="select-none flex-shrink-0" style={{ lineHeight: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            <span style={{ color: 'white', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 'bold', fontSize: 30 }}>J</span>
+            <span style={{ color: 'white', fontFamily: 'Georgia, serif', fontWeight: 'bold', fontSize: 17 }}>enan</span>
+          </div>
+          <div style={{ color: '#60a5fa', fontFamily: 'Georgia, serif', fontWeight: 'bold', fontStyle: 'italic', fontSize: 14, textAlign: 'center' }}>BIZ</div>
         </div>
         <div className="mr-1">
           <div className="text-white/70 text-xs">مرحباً،</div>
@@ -191,7 +195,11 @@ export default function Layout({ children }) {
           <button onClick={() => setOpen(true)} className="text-gray-600">
             <Menu size={22} />
           </button>
-          <img src="/logo.svg" alt="JenanBiz" style={{ height: 36 }} />
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 1, lineHeight: 1 }}>
+            <span style={{ color: '#1a1a2e', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 'bold', fontSize: 26 }}>J</span>
+            <span style={{ color: '#1a1a2e', fontFamily: 'Georgia, serif', fontWeight: 'bold', fontSize: 15 }}>enan</span>
+            <span style={{ color: '#4a6cf5', fontFamily: 'Georgia, serif', fontWeight: 'bold', fontStyle: 'italic', fontSize: 13 }}>BIZ</span>
+          </div>
           <div className="flex items-center gap-2" dir="ltr">
             {canCreateRequest && (
               <button
