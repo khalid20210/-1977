@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Search, Plus, Eye, Send, ChevronDown, X, Phone, Building2,
-  User, FileText, Edit2, Trash2, AlertTriangle
+  User, FileText, Edit2, Trash2, AlertTriangle, Upload
 } from 'lucide-react';
 
 const STATUS_MAP = {
@@ -25,6 +25,27 @@ const STATUS_MAP = {
   transferred:        { label: 'تم التحويل',           color: 'bg-emerald-100 text-emerald-700' },
   fees_received:      { label: 'عمولة مستلمة',         color: 'bg-green-100 text-green-800' },
   rejected:           { label: 'مرفوض',                color: 'bg-red-100 text-red-700' },
+};
+
+const USER_STATUS_MAP = {
+  draft:              { label: 'تم التقديم',      color: 'bg-blue-100 text-blue-700' },
+  bank_uploaded:      { label: 'تم الرفع',        color: 'bg-purple-100 text-purple-700' },
+  analyzing:          { label: 'تم الرفع',        color: 'bg-purple-100 text-purple-700' },
+  analyzed:           { label: 'تم الرفع',        color: 'bg-purple-100 text-purple-700' },
+  docs_pending:       { label: 'استكمال نواقص',   color: 'bg-orange-100 text-orange-700' },
+  docs_ready:         { label: 'تم الرفع',        color: 'bg-purple-100 text-purple-700' },
+  contract_submitted: { label: 'تم الرفع',        color: 'bg-purple-100 text-purple-700' },
+  forms_ready:        { label: 'تحديد مبلغ',      color: 'bg-green-100 text-green-700' },
+  forms_sent:         { label: 'تحديد مبلغ',      color: 'bg-green-100 text-green-700' },
+  file_submitted:     { label: 'تم الرفع',        color: 'bg-purple-100 text-purple-700' },
+  missing:            { label: 'استكمال نواقص',   color: 'bg-orange-100 text-orange-700' },
+  missing_submitted:  { label: 'تم الرفع',        color: 'bg-purple-100 text-purple-700' },
+  contract_received:  { label: 'التوقيع',         color: 'bg-cyan-100 text-cyan-700' },
+  submitted:          { label: 'تم التقديم',      color: 'bg-blue-100 text-blue-700' },
+  approved:           { label: 'تحديد مبلغ',      color: 'bg-green-100 text-green-700' },
+  transferred:        { label: 'تم الاستلام',     color: 'bg-emerald-100 text-emerald-700' },
+  fees_received:      { label: 'تم الاستلام',     color: 'bg-emerald-100 text-emerald-700' },
+  rejected:           { label: 'مرفوض',           color: 'bg-red-100 text-red-700' },
 };
 
 const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
@@ -61,6 +82,19 @@ export default function Requests() {
   const [submittingSend, setSubmittingSend] = useState(false);
 
   const [statusDropdown, setStatusDropdown] = useState(null);
+
+  // Upload steps for new request (non-admin)
+  const [newStep, setNewStep] = useState(1);
+  const [newReqId, setNewReqId] = useState(null);
+  const [uploadBankFiles, setUploadBankFiles] = useState([]);
+  const [uploadDocsFile, setUploadDocsFile] = useState(null);
+  const [uploadTaxFiles, setUploadTaxFiles] = useState([]);
+  const [uploadingNew, setUploadingNew] = useState(false);
+
+  // Send file to admin (non-admin)
+  const [sendFileReq, setSendFileReq] = useState(null);
+  const [sendFileInput, setSendFileInput] = useState(null);
+  const [submittingSendFile, setSubmittingSendFile] = useState(false);
 
   // Edit request
   const [editReq, setEditReq] = useState(null);
@@ -110,6 +144,11 @@ export default function Requests() {
     const res = await authFetch('/api/requests/partners-list');
     const data = res.ok ? await res.json() : [];
     setPartners(Array.isArray(data) ? data : []);
+    setNewStep(1);
+    setNewReqId(null);
+    setUploadBankFiles([]);
+    setUploadDocsFile(null);
+    setUploadTaxFiles([]);
     setShowNew(true);
   };
 
@@ -126,9 +165,61 @@ export default function Requests() {
     setSubmittingNew(true);
     const res = await authFetch('/api/requests', { method: 'POST', body: JSON.stringify(newForm) });
     const d = await res.json();
-    if (!res.ok) alert(d.error || 'خطأ');
-    else { setShowNew(false); setNewForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة', ownership_type: 'سعودي', funding_type: 'نقاط بيع', referred_by_id: '' }); load(); }
+    if (!res.ok) { alert(d.error || 'خطأ'); setSubmittingNew(false); return; }
+    if (!isAdmin) {
+      setNewReqId(d.id);
+      setNewStep(2);
+    } else {
+      setShowNew(false);
+      setNewForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة', ownership_type: 'سعودي', funding_type: 'نقاط بيع', referred_by_id: '' });
+      load();
+    }
     setSubmittingNew(false);
+  };
+
+  const submitWithFiles = async () => {
+    if (!newReqId) return;
+    setUploadingNew(true);
+    try {
+      if (uploadBankFiles.length > 0) {
+        const fd = new FormData();
+        uploadBankFiles.forEach(f => fd.append('files', f));
+        await authFetch(`/api/requests/${newReqId}/bank-statements`, { method: 'POST', body: fd });
+      }
+      if (uploadTaxFiles.length > 0) {
+        const fd = new FormData();
+        uploadTaxFiles.forEach(f => fd.append('files', f));
+        await authFetch(`/api/requests/${newReqId}/tax-documents`, { method: 'POST', body: fd });
+      }
+      if (uploadDocsFile) {
+        const fd = new FormData();
+        fd.append('file', uploadDocsFile);
+        await authFetch(`/api/requests/${newReqId}/submit-file`, { method: 'POST', body: fd });
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+    }
+    setShowNew(false);
+    setNewStep(1);
+    setNewReqId(null);
+    setUploadBankFiles([]);
+    setUploadDocsFile(null);
+    setUploadTaxFiles([]);
+    setNewForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة', ownership_type: 'سعودي', funding_type: 'نقاط بيع', referred_by_id: '' });
+    load();
+    setUploadingNew(false);
+  };
+
+  const submitSendFile = async () => {
+    if (!sendFileReq || !sendFileInput) return;
+    setSubmittingSendFile(true);
+    const fd = new FormData();
+    fd.append('file', sendFileInput);
+    const res = await authFetch(`/api/requests/${sendFileReq.id}/submit-file`, { method: 'POST', body: fd });
+    const d = await res.json();
+    if (!res.ok) alert(d.error || 'خطأ في الإرسال');
+    else { alert('تم إرسال الملف للمدير بنجاح'); setSendFileReq(null); setSendFileInput(null); load(); }
+    setSubmittingSendFile(false);
   };
 
   const openReview = async (req) => {
@@ -337,8 +428,9 @@ export default function Requests() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.map(r => {
-                  const st = STATUS_MAP[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-600' };
-                  const showAlwaysActions = !isAdmin && r.status === 'missing';
+                  const st = isAdmin
+                    ? (STATUS_MAP[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-600' })
+                    : (USER_STATUS_MAP[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-600' });
                   return (
                     <tr key={r.id} className="hover:bg-blue-50/30 transition-colors group">
                       <td className="px-5 py-4 text-gray-400 font-mono text-xs">{r.id}</td>
@@ -392,23 +484,27 @@ export default function Requests() {
                       </td>
                       <td className="px-4 py-4 text-gray-400 text-xs whitespace-nowrap">{fmt(r.created_at)}</td>
                       <td className="px-4 py-4">
-                        <div className={`flex items-center gap-2 transition-opacity ${showAlwaysActions ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <button onClick={() => openReview(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100">
                             <Eye size={13} /> مراجعة
                           </button>
+                          {(isAdmin || r.user_id === user?.id) && (
+                            <button onClick={() => openEdit(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-100">
+                              <Edit2 size={13} /> تحديث
+                            </button>
+                          )}
+                          {isAdmin ? (
+                            <button onClick={() => openSend(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100">
+                              <Send size={13} /> إرسال
+                            </button>
+                          ) : (
+                            <button onClick={() => { setSendFileReq(r); setSendFileInput(null); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100">
+                              <Send size={13} /> إرسال
+                            </button>
+                          )}
                           {!isAdmin && r.status === 'missing' && (
                             <button onClick={() => openReview(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-semibold hover:bg-orange-200">
                               <AlertTriangle size={13} /> إكمال النواقص
-                            </button>
-                          )}
-                          {(isAdmin || r.user_id === user?.id) && (
-                            <button onClick={() => openEdit(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-100">
-                              <Edit2 size={13} /> تعديل
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button onClick={() => openSend(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100">
-                              <Send size={13} /> إرسال
                             </button>
                           )}
                           {isAdmin && (
@@ -433,61 +529,128 @@ export default function Requests() {
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto" dir="rtl">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 my-8 p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-black text-gray-900">طلب جديد</h2>
-              <button onClick={() => setShowNew(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-            </div>
-            <form onSubmit={createRequest} className="space-y-3">
-              <div className="col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المنشأة *</label>
-                <input required value={newForm.company_name} onChange={e => setNewForm({ ...newForm, company_name: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المالك</label>
-                  <input value={newForm.owner_name} onChange={e => setNewForm({ ...newForm, owner_name: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            {newStep === 1 ? (
+              <>
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h2 className="text-lg font-black text-gray-900">طلب جديد</h2>
+                    {!isAdmin && <p className="text-xs text-gray-400 mt-0.5">الخطوة 1 من 2 — بيانات المنشأة</p>}
+                  </div>
+                  <button onClick={() => { setShowNew(false); setNewStep(1); }} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">جوال المالك</label>
-                  <input value={newForm.owner_phone} onChange={e => setNewForm({ ...newForm, owner_phone: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="05xxxxxxxx" />
+                <form onSubmit={createRequest} className="space-y-3">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المنشأة *</label>
+                    <input required value={newForm.company_name} onChange={e => setNewForm({ ...newForm, company_name: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المالك</label>
+                      <input value={newForm.owner_name} onChange={e => setNewForm({ ...newForm, owner_name: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">جوال المالك</label>
+                      <input value={newForm.owner_phone} onChange={e => setNewForm({ ...newForm, owner_phone: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="05xxxxxxxx" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">نوع الكيان</label>
+                      <select value={newForm.entity_type} onChange={e => setNewForm({ ...newForm, entity_type: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {['شركة', 'مؤسسة', 'شخص واحد', 'جمعية', 'حكومي'].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">الجنسية</label>
+                      <select value={newForm.ownership_type} onChange={e => setNewForm({ ...newForm, ownership_type: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {['سعودي', 'غير سعودي', 'مشترك'].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-2">نوع التمويل</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {FUNDING_TYPES.map(t => (
+                        <button key={t} type="button" onClick={() => setNewForm({ ...newForm, funding_type: t })} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${newForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {isAdmin && partners.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">الموظف / الشريك</label>
+                      <select value={newForm.referred_by_id} onChange={e => setNewForm({ ...newForm, referred_by_id: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">اختر...</option>
+                        {partners.map(p => <option key={p.id} value={p.id}>{p.name} ({p.role})</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {!isAdmin && (
+                    <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-2.5 text-xs text-blue-700 font-medium">
+                      سيتم حفظ بيانات المنشأة فوراً في سجل المنشآت عند النقر على التالي
+                    </div>
+                  )}
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={submittingNew} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60" style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}>
+                      {submittingNew ? 'جارٍ الحفظ...' : isAdmin ? 'إنشاء الطلب' : 'التالي ←'}
+                    </button>
+                    <button type="button" onClick={() => { setShowNew(false); setNewStep(1); }} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h2 className="text-lg font-black text-gray-900">رفع المستندات</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">الخطوة 2 من 2 — المرفقات (اختياري)</p>
+                  </div>
+                  <button onClick={() => { setShowNew(false); setNewStep(1); setNewReqId(null); load(); }} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">نوع الكيان</label>
-                  <select value={newForm.entity_type} onChange={e => setNewForm({ ...newForm, entity_type: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {['شركة', 'مؤسسة', 'شخص واحد', 'جمعية', 'حكومي'].map(t => <option key={t}>{t}</option>)}
-                  </select>
+                <div className="space-y-4">
+                  <div className="border border-gray-200 rounded-xl p-4">
+                    <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                      <Upload size={15} className="text-blue-600" /> مستندات
+                    </h3>
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                      <Upload size={20} className="text-gray-400 mb-1" />
+                      <span className="text-xs text-gray-500">{uploadDocsFile ? uploadDocsFile.name : 'اضغط لاختيار ملف (PDF, JPG, PNG)'}</span>
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={e => setUploadDocsFile(e.target.files?.[0] || null)} />
+                    </label>
+                    {uploadDocsFile && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadDocsFile.name}</p>}
+                  </div>
+                  <div className="border border-gray-200 rounded-xl p-4">
+                    <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                      <Upload size={15} className="text-purple-600" /> كشوف بنكية
+                    </h3>
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                      <Upload size={20} className="text-gray-400 mb-1" />
+                      <span className="text-xs text-gray-500">{uploadBankFiles.length > 0 ? `${uploadBankFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={e => setUploadBankFiles(Array.from(e.target.files || []))} />
+                    </label>
+                    {uploadBankFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadBankFiles.length} ملف</p>}
+                  </div>
+                  <div className="border border-gray-200 rounded-xl p-4">
+                    <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                      <Upload size={15} className="text-emerald-600" /> قوائم مالية وإقرارات
+                    </h3>
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                      <Upload size={20} className="text-gray-400 mb-1" />
+                      <span className="text-xs text-gray-500">{uploadTaxFiles.length > 0 ? `${uploadTaxFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={e => setUploadTaxFiles(Array.from(e.target.files || []))} />
+                    </label>
+                    {uploadTaxFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadTaxFiles.length} ملف</p>}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">الجنسية</label>
-                  <select value={newForm.ownership_type} onChange={e => setNewForm({ ...newForm, ownership_type: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {['سعودي', 'غير سعودي', 'مشترك'].map(t => <option key={t}>{t}</option>)}
-                  </select>
+                <div className="mt-5 flex justify-center">
+                  <button
+                    onClick={submitWithFiles}
+                    disabled={uploadingNew}
+                    className="px-12 py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
+                    style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
+                  >
+                    <Send size={16} />{uploadingNew ? 'جارٍ الإرسال...' : 'إرسال'}
+                  </button>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">نوع التمويل</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {FUNDING_TYPES.map(t => (
-                    <button key={t} type="button" onClick={() => setNewForm({ ...newForm, funding_type: t })} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${newForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
-                  ))}
-                </div>
-              </div>
-              {isAdmin && partners.length > 0 && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">الموظف / الشريك</label>
-                  <select value={newForm.referred_by_id} onChange={e => setNewForm({ ...newForm, referred_by_id: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">اختر...</option>
-                    {partners.map(p => <option key={p.id} value={p.id}>{p.name} ({p.role})</option>)}
-                  </select>
-                </div>
-              )}
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={submittingNew} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60" style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}>
-                  {submittingNew ? 'جارٍ الحفظ...' : 'إنشاء الطلب'}
-                </button>
-                <button type="button" onClick={() => setShowNew(false)} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
-              </div>
-            </form>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -780,6 +943,38 @@ export default function Requests() {
                 <button type="button" onClick={() => setSendReq(null)} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Send File Modal (non-admin) */}
+      {sendFileReq && !isAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-lg font-black text-gray-900">إرسال ملف للمدير</h2>
+                <p className="text-blue-600 text-xs font-medium mt-0.5">{sendFileReq.company_name}</p>
+              </div>
+              <button onClick={() => { setSendFileReq(null); setSendFileInput(null); }} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+              <Upload size={24} className="text-gray-400 mb-2" />
+              <span className="text-sm text-gray-500 font-medium">{sendFileInput ? sendFileInput.name : 'اضغط لاختيار الملف'}</span>
+              <span className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, ZIP</span>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.zip,.rar" className="hidden" onChange={e => setSendFileInput(e.target.files?.[0] || null)} />
+            </label>
+            {sendFileInput && <p className="text-xs text-green-600 mt-2 font-medium text-center">✓ {sendFileInput.name}</p>}
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={submitSendFile}
+                disabled={submittingSendFile || !sendFileInput}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
+              >
+                <Send size={15} />{submittingSendFile ? 'جارٍ الإرسال...' : 'إرسال للمدير'}
+              </button>
+              <button onClick={() => { setSendFileReq(null); setSendFileInput(null); }} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
+            </div>
           </div>
         </div>
       )}
