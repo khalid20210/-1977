@@ -1,6 +1,8 @@
 ﻿import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, BarChart2, FileText, Users } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const features = [
   { title: 'تحليل أهليتك للتسهيلات التمويلية', desc: 'تحليل ذكي لبيانات المنشآت والكشوفات', Icon: BarChart2 },
@@ -9,8 +11,81 @@ const features = [
 ];
 
 export default function Register() {
-  const [form, setForm] = React.useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const navigate = useNavigate();
+  const [form, setForm] = React.useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'employee',
+    partner_type: '',
+    password: '',
+    confirmPassword: '',
+  });
   const [showPass, setShowPass] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState('');
+
+  const updateField = (key) => (e) => {
+    const value = e.target.value;
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!form.name.trim() || !form.email.trim() || !form.password || !form.confirmPassword) {
+      setError('أكمل الحقول المطلوبة أولاً');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('كلمتا المرور غير متطابقتين');
+      return;
+    }
+    if (form.password.length < 8) {
+      setError('كلمة المرور يجب أن لا تقل عن 8 أحرف');
+      return;
+    }
+    if (form.role === 'partner' && !form.partner_type.trim()) {
+      setError('حدد نوع الشراكة');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(API_BASE + '/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim().toLowerCase(),
+          phone: form.phone.trim(),
+          role: form.role,
+          partner_type: form.role === 'partner' ? form.partner_type.trim() : null,
+          password: form.password,
+        }),
+      });
+
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch { data = { error: 'تعذر قراءة استجابة الخادم' }; }
+
+      if (!res.ok) {
+        setError(data.error || 'تعذر إنشاء الحساب');
+        return;
+      }
+
+      setSuccess(data.message || 'تم إرسال طلب التسجيل للإدارة');
+      setForm({ name: '', email: '', phone: '', role: 'employee', partner_type: '', password: '', confirmPassword: '' });
+      window.setTimeout(() => navigate('/login'), 1800);
+    } catch (submitError) {
+      setError('تعذر الاتصال بالخادم');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="h-screen flex overflow-hidden" dir="rtl">
@@ -99,8 +174,8 @@ export default function Register() {
         <div className="w-full max-w-sm">
           <p className="text-center text-blue-600 text-xs font-bold tracking-widest mb-2">CREATE ACCOUNT</p>
           <h2 className="text-3xl font-black text-gray-900 mb-1 text-center">إنشاء حساب جديد</h2>
-          <p className="text-center text-gray-400 text-sm mb-8">أنشئ حسابك للبدء باستخدام المنصة</p>
-          <form className="space-y-5">
+          <p className="text-center text-gray-400 text-sm mb-8">أنشئ حسابك وسيصل طلبك للمدير للموافقة أو الرفض</p>
+          <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">الاسم الكامل</label>
               <div className="relative">
@@ -112,7 +187,7 @@ export default function Register() {
                   className="w-full border border-gray-200 rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                   placeholder="اسمك الكامل"
                   value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  onChange={updateField('name')}
                 />
               </div>
             </div>
@@ -127,10 +202,43 @@ export default function Register() {
                   className="w-full border border-gray-200 rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                   placeholder="example@email.com"
                   value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  onChange={updateField('email')}
                 />
               </div>
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">رقم الجوال</label>
+              <input
+                type="text"
+                className="w-full border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                placeholder="05xxxxxxxx"
+                value={form.phone}
+                onChange={updateField('phone')}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">نوع الحساب</label>
+              <select
+                className="w-full border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                value={form.role}
+                onChange={updateField('role')}
+              >
+                <option value="employee">موظف</option>
+                <option value="partner">شريك / وسيط</option>
+              </select>
+            </div>
+            {form.role === 'partner' && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">نوع الشراكة</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                  placeholder="مثال: وسيط"
+                  value={form.partner_type}
+                  onChange={updateField('partner_type')}
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">كلمة المرور</label>
               <div className="relative">
@@ -142,7 +250,7 @@ export default function Register() {
                   className="w-full border border-gray-200 rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                   placeholder="••••••••"
                   value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  onChange={updateField('password')}
                 />
               </div>
             </div>
@@ -157,16 +265,23 @@ export default function Register() {
                   className="w-full border border-gray-200 rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                   placeholder="••••••••"
                   value={form.confirmPassword}
-                  onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                  onChange={updateField('confirmPassword')}
                 />
               </div>
             </div>
+            <label className="flex items-center gap-2 text-xs text-gray-500 select-none cursor-pointer">
+              <input type="checkbox" checked={showPass} onChange={e => setShowPass(e.target.checked)} />
+              إظهار كلمة المرور
+            </label>
+            {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</div>}
+            {success && <div className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-xl px-4 py-3">{success}</div>}
             <button
               type="submit"
+              disabled={submitting}
               className="w-full text-white font-bold py-3 rounded-xl text-base transition-opacity hover:opacity-90"
               style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}
             >
-              إنشاء الحساب ←
+              {submitting ? 'جارٍ إرسال الطلب...' : 'إنشاء الحساب ←'}
             </button>
           </form>
           <p className="text-center text-sm text-gray-400 mt-6">
