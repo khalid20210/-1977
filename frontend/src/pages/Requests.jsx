@@ -54,6 +54,14 @@ export default function Requests() {
   const { authFetch, user, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_URL || '';
+
+  const getFileUrl = (filePath) => {
+    if (!filePath) return null;
+    const idx = filePath.indexOf('uploads/');
+    if (idx !== -1) return `${API_BASE}/uploads/${filePath.slice(idx + 8)}`;
+    return null;
+  };
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -214,14 +222,8 @@ export default function Requests() {
     const res = await authFetch('/api/requests', { method: 'POST', body: JSON.stringify(newForm) });
     const d = await res.json();
     if (!res.ok) { alert(d.error || 'خطأ'); setSubmittingNew(false); return; }
-    if (!isAdmin) {
-      setNewReqId(d.id);
-      setNewStep(2);
-    } else {
-      setShowNew(false);
-      setNewForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة', ownership_type: 'سعودي', funding_type: 'نقاط بيع', referred_by_id: '' });
-      load();
-    }
+    setNewReqId(d.id);
+    setNewStep(2);
     setSubmittingNew(false);
   };
 
@@ -465,14 +467,14 @@ export default function Requests() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  <th className="text-right px-5 py-3.5 font-semibold text-gray-500 text-xs">#</th>
+                  <th className="text-right px-5 py-3.5 font-semibold text-gray-500 text-xs hidden sm:table-cell">#</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">المنشأة</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">جوال المالك</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">نوع التمويل</th>
-                  {isAdmin && <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">الموظف / الشريك</th>}
-                  <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">الجهة التمويلية</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs hidden md:table-cell">جوال المالك</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs hidden lg:table-cell">نوع التمويل</th>
+                  {isAdmin && <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs hidden md:table-cell">الموظف / الشريك</th>}
+                  <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs hidden lg:table-cell">الجهة التمويلية</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">الحالة</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">التاريخ</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs hidden sm:table-cell">التاريخ</th>
                   <th className="px-4 py-3.5"></th>
                 </tr>
               </thead>
@@ -483,7 +485,7 @@ export default function Requests() {
                     : (USER_STATUS_MAP[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-600' });
                   return (
                     <tr key={r.id} className="hover:bg-blue-50/30 transition-colors group">
-                      <td className="px-5 py-4 text-gray-400 font-mono text-xs">{r.id}</td>
+                      <td className="px-5 py-4 text-gray-400 font-mono text-xs hidden sm:table-cell">{r.id}</td>
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
@@ -495,23 +497,23 @@ export default function Requests() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 hidden md:table-cell">
                         {r.owner_phone ? (
                           <div className="flex items-center gap-1.5 text-gray-600"><Phone size={13} className="text-gray-400" /><span className="font-mono text-xs">{r.owner_phone}</span></div>
                         ) : <span className="text-gray-300 text-xs">—</span>}
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 hidden lg:table-cell">
                         <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">{r.funding_type}</span>
                       </td>
                       {isAdmin && (
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 hidden md:table-cell">
                           <div className="flex items-center gap-1.5">
                             <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center"><span className="text-green-700 font-bold" style={{ fontSize: 10 }}>{r.user_name?.[0]}</span></div>
                             <span className="text-gray-700 text-xs font-medium">{r.user_name || '—'}</span>
                           </div>
                         </td>
                       )}
-                      <td className="px-4 py-4 text-gray-500 text-xs">{r.funding_entity_name || <span className="text-gray-300">—</span>}</td>
+                      <td className="px-4 py-4 text-gray-500 text-xs hidden lg:table-cell">{r.funding_entity_name || <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-4">
                         {isAdmin ? (
                           <div className="relative">
@@ -523,7 +525,7 @@ export default function Requests() {
                           <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${st.color}`}>{st.label}</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-gray-400 text-xs whitespace-nowrap">{fmt(r.created_at)}</td>
+                      <td className="px-4 py-4 text-gray-400 text-xs whitespace-nowrap hidden sm:table-cell">{fmt(r.created_at)}</td>
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2 flex-wrap">
                           <button onClick={() => openReview(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100">
@@ -646,7 +648,7 @@ export default function Requests() {
                   )}
                   <div className="flex gap-3 pt-2">
                     <button type="submit" disabled={submittingNew} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60" style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}>
-                      {submittingNew ? 'جارٍ الحفظ...' : isAdmin ? 'إنشاء الطلب' : 'التالي ←'}
+                      {submittingNew ? 'جارٍ الحفظ...' : 'التالي ←'}
                     </button>
                     <button type="button" onClick={() => { setShowNew(false); setNewStep(1); }} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
                   </div>
@@ -753,11 +755,57 @@ export default function Requests() {
                     <h3 className="font-bold text-gray-700 text-sm mb-2">الكشوفات البنكية ({reviewData.bank_statements.length})</h3>
                     <div className="space-y-2">
                       {reviewData.bank_statements.map(b => (
-                        <div key={b.id} className="flex items-center justify-between bg-blue-50 rounded-xl px-4 py-2.5">
-                          <span className="text-sm text-gray-700 font-medium">{b.file_name}</span>
-                          <span className="text-xs text-gray-400">{b.period_label}</span>
+                        <div key={b.id} className="flex items-center justify-between bg-blue-50 rounded-xl px-4 py-2.5 gap-2">
+                          <span className="text-sm text-gray-700 font-medium truncate">{b.file_name}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {b.period_label && <span className="text-xs text-gray-400">{b.period_label}</span>}
+                            {getFileUrl(b.file_path) && (
+                              <a href={getFileUrl(b.file_path)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-semibold">تحميل</a>
+                            )}
+                          </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+                {reviewData.account_statements?.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-gray-700 text-sm mb-2">كشوف الحساب ({reviewData.account_statements.length})</h3>
+                    <div className="space-y-2">
+                      {reviewData.account_statements.map(a => (
+                        <div key={a.id} className="flex items-center justify-between bg-purple-50 rounded-xl px-4 py-2.5 gap-2">
+                          <span className="text-sm text-gray-700 font-medium truncate">{a.file_name}</span>
+                          {getFileUrl(a.file_path) && (
+                            <a href={getFileUrl(a.file_path)} target="_blank" rel="noopener noreferrer" className="text-xs text-purple-600 hover:underline font-semibold flex-shrink-0">تحميل</a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {reviewData.tax_documents?.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-gray-700 text-sm mb-2">القوائم المالية والإقرارات ({reviewData.tax_documents.length})</h3>
+                    <div className="space-y-2">
+                      {reviewData.tax_documents.map(t => (
+                        <div key={t.id} className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-2.5 gap-2">
+                          <span className="text-sm text-gray-700 font-medium truncate">{t.file_name}</span>
+                          {getFileUrl(t.file_path) && (
+                            <a href={getFileUrl(t.file_path)} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline font-semibold flex-shrink-0">تحميل</a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(reviewData.complete_file_name || reviewData.complete_file_path) && (
+                  <div>
+                    <h3 className="font-bold text-gray-700 text-sm mb-2">الملف الكامل</h3>
+                    <div className="flex items-center justify-between bg-orange-50 rounded-xl px-4 py-2.5 gap-2">
+                      <span className="text-sm text-gray-700 font-medium truncate">{reviewData.complete_file_name || 'ملف مرفق'}</span>
+                      {getFileUrl(reviewData.complete_file_path) && (
+                        <a href={getFileUrl(reviewData.complete_file_path)} target="_blank" rel="noopener noreferrer" className="text-xs text-orange-600 hover:underline font-semibold flex-shrink-0">تحميل</a>
+                      )}
                     </div>
                   </div>
                 )}
