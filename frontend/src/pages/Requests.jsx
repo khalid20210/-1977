@@ -620,7 +620,7 @@ export default function Requests() {
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">الجنسية</label>
                       <select value={newForm.ownership_type} onChange={e => setNewForm({ ...newForm, ownership_type: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        {['سعودي', 'غير سعودي', 'مشترك'].map(t => <option key={t}>{t}</option>)}
+                        {['سعودي', 'مختلط', 'مستثمر'].map(t => <option key={t}>{t}</option>)}
                       </select>
                     </div>
                   </div>

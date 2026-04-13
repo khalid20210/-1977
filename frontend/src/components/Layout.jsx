@@ -111,10 +111,12 @@ export default function Layout({ children }) {
     <div className={`flex flex-col h-full ${mobile ? '' : ''}`}>
       {/* الشعار */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-        <div className="flex items-center gap-1 select-none">
-          <span className="text-2xl font-black tracking-tight" style={{ color: '#fff', fontFamily: 'serif', letterSpacing: '-1px' }}>J</span>
-          <span className="text-xl font-bold" style={{ color: '#e2e8f0' }}>enan</span>
-          <span className="text-xl font-black" style={{ color: '#38bdf8' }}>Biz</span>
+        <div className="select-none flex-shrink-0">
+          <svg width="54" height="54" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <text x="10" y="140" fontFamily="Georgia, 'Times New Roman', serif" fontSize="160" fontWeight="900" fill="white">J</text>
+            <text x="72" y="118" fontFamily="Georgia, 'Times New Roman', serif" fontSize="58" fontWeight="400" fill="#e2e8f0">enan</text>
+            <text x="72" y="158" fontFamily="Georgia, 'Times New Roman', serif" fontSize="52" fontWeight="700" fontStyle="italic" fill="#60a5fa">BIZ</text>
+          </svg>
         </div>
         <div className="mr-1">
           <div className="text-white/70 text-xs">مرحباً،</div>
@@ -193,11 +195,11 @@ export default function Layout({ children }) {
           <button onClick={() => setOpen(true)} className="text-gray-600">
             <Menu size={22} />
           </button>
-          <div className="flex items-center gap-0.5 select-none">
-            <span className="text-xl font-black" style={{ color: '#1e3a8a', fontFamily: 'serif' }}>J</span>
-            <span className="text-lg font-bold text-gray-700">enan</span>
-            <span className="text-lg font-black text-sky-500">Biz</span>
-          </div>
+          <svg width="44" height="40" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className="select-none">
+            <text x="10" y="140" fontFamily="Georgia, 'Times New Roman', serif" fontSize="160" fontWeight="900" fill="#1e3a8a">J</text>
+            <text x="72" y="118" fontFamily="Georgia, 'Times New Roman', serif" fontSize="58" fontWeight="400" fill="#1e293b">enan</text>
+            <text x="72" y="158" fontFamily="Georgia, 'Times New Roman', serif" fontSize="52" fontWeight="700" fontStyle="italic" fill="#3b82f6">BIZ</text>
+          </svg>
           <div className="flex items-center gap-2" dir="ltr">
             {canCreateRequest && (
               <button

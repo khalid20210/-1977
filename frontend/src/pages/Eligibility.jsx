@@ -7,7 +7,7 @@ import {
 
 const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
 const ENTITY_TYPES  = ['شركة', 'مؤسسة', 'شخص واحد'];
-const OWNERSHIP_TYPES = ['سعودي', 'غير سعودي'];
+const OWNERSHIP_TYPES = ['سعودي', 'مختلط', 'مستثمر'];
 
 const SAR = n => `${Number(n).toLocaleString('ar-SA', { maximumFractionDigits: 0 })} ر.س`;
 
