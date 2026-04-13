@@ -13,7 +13,11 @@ const allowedOrigins = new Set(
   [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'https://khalid20210.github.io'
+    'https://khalid20210.github.io',
+    'http://jenanbiz.com',
+    'https://jenanbiz.com',
+    'http://www.jenanbiz.com',
+    'https://www.jenanbiz.com'
   ].concat(
     (process.env.FRONTEND_URLS || '')
       .split(',')
