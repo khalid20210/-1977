@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('token'));
@@ -10,7 +12,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (token) {
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(API_BASE + '/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(data => { if (data) setUser(data.user || data); else { setToken(null); localStorage.removeItem('token'); } })
         .finally(() => setLoading(false));
@@ -36,7 +38,7 @@ export function AuthProvider({ children }) {
     if (!(options.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
     }
-    return fetch(url, { ...options, headers });
+    return fetch(API_BASE + url, { ...options, headers });
   };
 
   return (
