@@ -138,8 +138,10 @@ router.get('/requests/:id', adminMiddleware, async (req, res) => {
       WHERE r.id = ?
     `).get(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
-    const [bankStatements, documents, statusHistory] = await Promise.all([
+    const [bankStatements, accountStatements, taxDocuments, documents, statusHistory] = await Promise.all([
       db.prepare('SELECT * FROM bank_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id),
+      db.prepare('SELECT * FROM account_statements WHERE request_id = ? ORDER BY id').all(req.params.id),
+      db.prepare('SELECT * FROM tax_documents WHERE request_id = ? ORDER BY id').all(req.params.id),
       db.prepare('SELECT * FROM request_documents WHERE request_id = ? ORDER BY id').all(req.params.id),
       db.prepare(`SELECT sh.*, u.name as created_by_name FROM status_history sh
         LEFT JOIN users u ON sh.created_by = u.id
@@ -147,7 +149,7 @@ router.get('/requests/:id', adminMiddleware, async (req, res) => {
     ]);
     let analysisResult = {};
     try { analysisResult = JSON.parse(request.analysis_result || '{}'); } catch (e) {}
-    res.json({ ...request, analysis_result: analysisResult, bank_statements: bankStatements, documents, status_history: statusHistory });
+    res.json({ ...request, analysis_result: analysisResult, bank_statements: bankStatements, account_statements: accountStatements, tax_documents: taxDocuments, documents, status_history: statusHistory });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطأ' });

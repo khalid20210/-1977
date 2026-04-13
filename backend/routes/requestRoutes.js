@@ -340,11 +340,12 @@ router.post('/:id/bank-statements', authMiddleware, bankUpload.array('files', 15
 
     const inserted = [];
     for (const file of req.files) {
+      const fixedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
       const r = await db.prepare(`
         INSERT INTO bank_statements (request_id, file_path, file_name, analysis_status)
         VALUES (?, ?, ?, 'pending')
-      `).run(req.params.id, file.path, file.originalname);
-      inserted.push({ id: r.lastInsertRowid, file_name: file.originalname });
+      `).run(req.params.id, file.path, fixedName);
+      inserted.push({ id: r.lastInsertRowid, file_name: fixedName });
     }
 
     await db.prepare("UPDATE requests SET status = 'bank_uploaded', updated_at = NOW() WHERE id = ?").run(req.params.id);
@@ -434,11 +435,12 @@ router.post('/:id/account-statements', authMiddleware, accountUpload.array('file
 
     const inserted = [];
     for (const file of req.files) {
+      const fixedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
       const r = await db.prepare(`
         INSERT INTO account_statements (request_id, file_path, file_name)
         VALUES (?, ?, ?)
-      `).run(req.params.id, file.path, file.originalname);
-      inserted.push({ id: r.lastInsertRowid, file_name: file.originalname });
+      `).run(req.params.id, file.path, fixedName);
+      inserted.push({ id: r.lastInsertRowid, file_name: fixedName });
     }
 
     res.json({ message: `تم رفع ${req.files.length} كشف حساب بنجاح`, statements: inserted });
@@ -457,11 +459,12 @@ router.post('/:id/tax-documents', authMiddleware, taxUpload.array('files', 15), 
 
     const inserted = [];
     for (const file of req.files) {
+      const fixedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
       const r = await db.prepare(`
         INSERT INTO tax_documents (request_id, file_path, file_name)
         VALUES (?, ?, ?)
-      `).run(req.params.id, file.path, file.originalname);
-      inserted.push({ id: r.lastInsertRowid, file_name: file.originalname });
+      `).run(req.params.id, file.path, fixedName);
+      inserted.push({ id: r.lastInsertRowid, file_name: fixedName });
     }
 
     res.json({ message: `تم رفع ${req.files.length} وثيقة ضريبية بنجاح`, documents: inserted });
@@ -560,7 +563,7 @@ router.post('/:id/submit-file', authMiddleware, completeUpload.single('file'), a
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
     const filePath = req.file ? req.file.path : null;
-    const fileName = req.file ? req.file.originalname : null;
+    const fileName = req.file ? Buffer.from(req.file.originalname, 'latin1').toString('utf8') : null;
 
     await db.prepare(`
       UPDATE requests SET
