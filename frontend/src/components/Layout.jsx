@@ -15,6 +15,7 @@ const navItems = [
   { path: '/performance',     label: 'تحليل الأداء',  icon: TrendingUp,      roles: ['admin'] },
   { path: '/reports',         label: 'التقارير',        icon: BarChart2,       roles: ['admin'] },
   { path: '/eligibility',     label: 'أهلية المنشأة',  icon: ClipboardCheck,  roles: ['admin', 'employee', 'partner'] },
+  { path: '/establishments',  label: 'منشآتي',         icon: Store,           roles: ['employee', 'partner'] },
   { path: '/brokers',         label: 'الوسطاء',        icon: UserCheck,       roles: ['admin', 'employee'] },
   { path: '/companies',       label: 'جهات التمويل', icon: Building2,       roles: ['admin'] },
   { path: '/users',           label: 'المستخدمون',   icon: Users,           roles: ['admin'] },
