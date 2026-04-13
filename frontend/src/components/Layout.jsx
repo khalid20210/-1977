@@ -112,11 +112,7 @@ export default function Layout({ children }) {
       {/* الشعار */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
         <div>
-          <div className="flex items-end" style={{ lineHeight: 1 }}>
-            <span className="text-white font-black text-2xl" style={{ fontFamily: 'Georgia, serif' }}>J</span>
-            <span className="text-white font-light text-sm mb-0.5">enan</span>
-          </div>
-          <div className="text-sky-400 font-bold text-xs tracking-widest">BIZ</div>
+          <img src="/jenanbiz.jpeg" alt="JenanBiz" className="h-12 w-auto object-contain rounded-lg" />
         </div>
         <div className="mr-1">
           <div className="text-white/70 text-xs">مرحباً،</div>
@@ -195,11 +191,7 @@ export default function Layout({ children }) {
           <button onClick={() => setOpen(true)} className="text-gray-600">
             <Menu size={22} />
           </button>
-          <div className="flex items-end">
-            <span className="font-black text-xl text-gray-900" style={{ fontFamily: 'Georgia, serif' }}>J</span>
-            <span className="font-light text-sm text-gray-700">enan</span>
-            <span className="text-blue-600 font-bold text-xs ml-1 tracking-widest">BIZ</span>
-          </div>
+          <img src="/jenanbiz.jpeg" alt="JenanBiz" className="h-8 w-auto object-contain" />
           <div className="flex items-center gap-2" dir="ltr">
             {canCreateRequest && (
               <button

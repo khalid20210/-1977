@@ -82,6 +82,14 @@ export default function Requests() {
   const [submittingSend, setSubmittingSend] = useState(false);
 
   const [statusDropdown, setStatusDropdown] = useState(null);
+  const [statusDropdownPos, setStatusDropdownPos] = useState({ top: 0, right: 0 });
+
+  const openStatusDropdown = (id, e) => {
+    if (statusDropdown === id) { setStatusDropdown(null); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setStatusDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setStatusDropdown(id);
+  };
 
   // Upload steps for new request (non-admin)
   const [newStep, setNewStep] = useState(1);
@@ -95,6 +103,46 @@ export default function Requests() {
   const [sendFileReq, setSendFileReq] = useState(null);
   const [sendFileInput, setSendFileInput] = useState(null);
   const [submittingSendFile, setSubmittingSendFile] = useState(false);
+
+  // Upload files from review modal
+  const [reviewBankFiles, setReviewBankFiles] = useState([]);
+  const [reviewDocsFile, setReviewDocsFile] = useState(null);
+  const [reviewTaxFiles, setReviewTaxFiles] = useState([]);
+  const [uploadingReview, setUploadingReview] = useState(false);
+
+  const submitReviewFiles = async () => {
+    if (!reviewReq) return;
+    if (reviewBankFiles.length === 0 && !reviewDocsFile && reviewTaxFiles.length === 0) {
+      alert('اختر ملفاً واحداً على الأقل'); return;
+    }
+    setUploadingReview(true);
+    try {
+      if (reviewBankFiles.length > 0) {
+        const fd = new FormData();
+        reviewBankFiles.forEach(f => fd.append('files', f));
+        await authFetch(`/api/requests/${reviewReq.id}/bank-statements`, { method: 'POST', body: fd });
+      }
+      if (reviewTaxFiles.length > 0) {
+        const fd = new FormData();
+        reviewTaxFiles.forEach(f => fd.append('files', f));
+        await authFetch(`/api/requests/${reviewReq.id}/tax-documents`, { method: 'POST', body: fd });
+      }
+      if (reviewDocsFile) {
+        const fd = new FormData();
+        fd.append('file', reviewDocsFile);
+        await authFetch(`/api/requests/${reviewReq.id}/submit-file`, { method: 'POST', body: fd });
+      }
+      await reloadReview(reviewReq.id);
+      await load();
+      setReviewBankFiles([]);
+      setReviewDocsFile(null);
+      setReviewTaxFiles([]);
+      alert('تم رفع الملفات بنجاح');
+    } catch (err) {
+      alert('خطأ في رفع الملفات');
+    }
+    setUploadingReview(false);
+  };
 
   // Edit request
   const [editReq, setEditReq] = useState(null);
@@ -383,7 +431,9 @@ export default function Requests() {
         </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">كل الحالات</option>
-          {Object.entries(STATUS_MAP).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          {Object.entries(isAdmin ? STATUS_MAP : USER_STATUS_MAP)
+            .filter(([k], i, arr) => arr.findIndex(([, v]) => v.label === (isAdmin ? STATUS_MAP[k] : USER_STATUS_MAP[k])?.label) === i)
+            .map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
       </div>
 
@@ -465,18 +515,9 @@ export default function Requests() {
                       <td className="px-4 py-4">
                         {isAdmin ? (
                           <div className="relative">
-                            <button onClick={() => setStatusDropdown(statusDropdown === r.id ? null : r.id)} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer hover:opacity-80 ${st.color}`}>
+                            <button onClick={(e) => openStatusDropdown(r.id, e)} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer hover:opacity-80 ${st.color}`}>
                               {st.label}<ChevronDown size={11} />
                             </button>
-                            {statusDropdown === r.id && (
-                              <div className="absolute z-30 top-8 right-0 bg-white border border-gray-200 rounded-xl shadow-xl py-1 min-w-[160px] max-h-64 overflow-y-auto">
-                                {Object.entries(STATUS_MAP).map(([k, v]) => (
-                                  <button key={k} onClick={() => changeStatus(r.id, k)} className={`w-full text-right px-4 py-2 text-xs hover:bg-gray-50 flex items-center gap-2 ${r.status === k ? 'font-bold text-blue-600' : 'text-gray-700'}`}>
-                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${v.color.split(' ')[0]}`} />{v.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         ) : (
                           <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${st.color}`}>{st.label}</span>
@@ -523,7 +564,23 @@ export default function Requests() {
         </div>
       )}
 
-      {statusDropdown && <div className="fixed inset-0 z-20" onClick={() => setStatusDropdown(null)} />}
+      {/* Status Dropdown Portal (fixed position) */}
+      {statusDropdown && (
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={() => setStatusDropdown(null)} />
+          <div
+            className="fixed z-[100] bg-white border border-gray-200 rounded-xl shadow-2xl py-1 min-w-[180px] max-h-64 overflow-y-auto"
+            style={{ top: statusDropdownPos.top, right: statusDropdownPos.right }}
+            dir="rtl"
+          >
+            {Object.entries(STATUS_MAP).map(([k, v]) => (
+              <button key={k} onClick={() => changeStatus(statusDropdown, k)} className={`w-full text-right px-4 py-2 text-xs hover:bg-gray-50 flex items-center gap-2 ${k === requests.find(r => r.id === statusDropdown)?.status ? 'font-bold text-blue-600' : 'text-gray-700'}`}>
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${v.color.split(' ')[0]}`} />{v.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* New Request Modal */}
       {showNew && (
@@ -567,9 +624,9 @@ export default function Requests() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-2">نوع التمويل</label>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="grid grid-cols-4 gap-1.5">
                       {FUNDING_TYPES.map(t => (
-                        <button key={t} type="button" onClick={() => setNewForm({ ...newForm, funding_type: t })} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${newForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
+                        <button key={t} type="button" onClick={() => setNewForm({ ...newForm, funding_type: t })} className={`px-2 py-1.5 rounded-lg text-xs font-medium text-center transition-colors ${newForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
                       ))}
                     </div>
                   </div>
@@ -664,7 +721,7 @@ export default function Requests() {
                 <h2 className="text-lg font-black text-gray-900">{reviewReq.company_name}</h2>
                 <p className="text-gray-400 text-xs mt-0.5">طلب رقم #{reviewReq.id}</p>
               </div>
-              <button onClick={() => { setReviewReq(null); setReviewData(null); setChatMessages([]); setChatText(''); setSuggestedEntities([]); }} className="text-gray-500 hover:text-gray-700 p-1"><X size={20} /></button>
+              <button onClick={() => { setReviewReq(null); setReviewData(null); setChatMessages([]); setChatText(''); setSuggestedEntities([]); setReviewBankFiles([]); setReviewDocsFile(null); setReviewTaxFiles([]); }} className="text-gray-500 hover:text-gray-700 p-1"><X size={20} /></button>
             </div>
             {loadingReview ? (
               <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
@@ -701,6 +758,49 @@ export default function Requests() {
                           <span className="text-xs text-gray-400">{b.period_label}</span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* قسم رفع الملفات للموظف/الشريك */}
+                {!isAdmin && reviewData.status !== 'rejected' && (
+                  <div className="border border-blue-200 rounded-xl p-4 bg-blue-50/60">
+                    <h3 className="font-bold text-blue-800 text-sm mb-3 flex items-center gap-2">
+                      <Upload size={15} className="text-blue-600" /> رفع مستندات وملفات
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">مستندات</label>
+                        <label className="flex items-center gap-2 w-full border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-white transition-colors">
+                          <Upload size={14} className="text-gray-400 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 truncate">{reviewDocsFile ? reviewDocsFile.name : 'اختر ملف (PDF, JPG, PNG)'}</span>
+                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={e => setReviewDocsFile(e.target.files?.[0] || null)} />
+                        </label>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">كشوف بنكية</label>
+                        <label className="flex items-center gap-2 w-full border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-white transition-colors">
+                          <Upload size={14} className="text-gray-400 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 truncate">{reviewBankFiles.length > 0 ? `${reviewBankFiles.length} ملف محدد` : 'اختر ملفات متعددة'}</span>
+                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={e => setReviewBankFiles(Array.from(e.target.files || []))} />
+                        </label>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">قوائم مالية وإقرارات</label>
+                        <label className="flex items-center gap-2 w-full border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-white transition-colors">
+                          <Upload size={14} className="text-gray-400 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 truncate">{reviewTaxFiles.length > 0 ? `${reviewTaxFiles.length} ملف محدد` : 'اختر ملفات متعددة'}</span>
+                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={e => setReviewTaxFiles(Array.from(e.target.files || []))} />
+                        </label>
+                      </div>
+                      <button
+                        onClick={submitReviewFiles}
+                        disabled={uploadingReview}
+                        className="w-full py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60"
+                        style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
+                      >
+                        <Send size={14} />{uploadingReview ? 'جارٍ الرفع...' : 'إرسال الملفات للمدير'}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -866,10 +966,10 @@ export default function Requests() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">نوع التمويل</label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid grid-cols-4 gap-1.5">
                   {FUNDING_TYPES.map(t => (
                     <button key={t} type="button" onClick={() => setEditForm({ ...editForm, funding_type: t })}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${editForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
+                      className={`px-2 py-1.5 rounded-lg text-xs font-medium text-center transition-colors ${editForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
                   ))}
                 </div>
               </div>
