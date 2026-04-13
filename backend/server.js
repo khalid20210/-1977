@@ -77,6 +77,8 @@ app.use('/api/settings', apiLimiter, require('./routes/settingsRoutes'));
 app.use('/api/campaigns', apiLimiter, require('./routes/campaignRoutes'));
 app.use('/api/brokers', apiLimiter, require('./routes/brokerRoutes'));
 app.use('/api/attendance', apiLimiter, require('./routes/attendanceRoutes'));
+app.use('/api/notifications', apiLimiter, require('./routes/notificationRoutes'));
+app.use('/api/establishments', apiLimiter, require('./routes/companiesRoutes'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', platform: 'منصة جنان بيز حلول الأعمال', time: new Date().toISOString() });

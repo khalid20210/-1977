@@ -43,6 +43,8 @@ function RevCard({ label, value, sub, icon: Icon, accent, trend }) {
     blue:   'from-blue-500 to-sky-500',
     purple: 'from-purple-500 to-indigo-500',
     amber:  'from-amber-500 to-orange-400',
+    red:    'from-red-500 to-rose-500',
+    teal:   'from-teal-500 to-cyan-500',
   };
   const TrendIcon = trend > 0 ? ArrowUpRight : trend < 0 ? ArrowDownRight : Minus;
   const trendColor = trend > 0 ? 'text-green-100' : trend < 0 ? 'text-red-100' : 'text-white/90';
@@ -318,20 +320,12 @@ function EmployeeDashboard({ user, requests, authFetch }) {
         <p className="text-sm text-gray-500 mt-0.5">{new Date().toLocaleDateString('ar-SA', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</p>
       </div>
 
-      {/* Stats */}
+            {/* Stats - RevCard style */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'إجمالي طلباتي', value: total,    icon: FileText,       color: 'border-blue-200 bg-blue-50', ic: 'text-blue-500' },
-          { label: 'قيد التنفيذ',    value: active,   icon: Clock,          color: 'border-yellow-200 bg-yellow-50', ic: 'text-yellow-500' },
-          { label: 'معتمدة',         value: approved, icon: CheckCircle,    color: 'border-green-200 bg-green-50',  ic: 'text-green-500' },
-          { label: 'نواقص معلقة',    value: missing,  icon: AlertTriangle,  color: 'border-red-200 bg-red-50',      ic: 'text-red-500' },
-        ].map(s => (
-          <div key={s.label} className={`rounded-2xl border p-5 ${s.color}`}>
-            <s.icon size={20} className={`mb-2 ${s.ic}`} />
-            <p className="text-3xl font-black text-gray-800">{s.value}</p>
-            <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-          </div>
-        ))}
+        <RevCard label="إجمالي طلباتي" value={String(total)}    sub="جميع الطلبات" icon={FileText}      accent="blue"   trend={null} />
+        <RevCard label="قيد التنفيذ"    value={String(active)}   sub="طلبات نشطة"  icon={Clock}         accent="amber"  trend={null} />
+        <RevCard label="معتمدة"         value={String(approved)} sub="تم اعتمادها"  icon={CheckCircle}   accent="green"  trend={null} />
+        <RevCard label="نواقص معلقة"    value={String(missing)}  sub="تحتاج متابعة"  icon={AlertTriangle} accent="red"    trend={null} />
       </div>
 
       {/* My Target Progress */}
@@ -417,20 +411,12 @@ function PartnerDashboard({ user, requests }) {
         <p className="text-sm text-gray-500 mt-0.5">{new Date().toLocaleDateString('ar-SA', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</p>
       </div>
 
-      {/* Stats */}
+      {/* Stats - RevCard style */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'إجمالي طلباتي', value: total,    icon: FileText,      color: 'border-blue-200 bg-blue-50',    ic: 'text-blue-500' },
-          { label: 'قيد التنفيذ',    value: active,   icon: Clock,         color: 'border-yellow-200 bg-yellow-50', ic: 'text-yellow-500' },
-          { label: 'معتمدة',         value: approved, icon: CheckCircle,   color: 'border-green-200 bg-green-50',   ic: 'text-green-500' },
-          { label: 'نواقص معلقة',    value: missing,  icon: AlertTriangle, color: 'border-red-200 bg-red-50',       ic: 'text-red-500' },
-        ].map(s => (
-          <div key={s.label} className={`rounded-2xl border p-5 ${s.color}`}>
-            <s.icon size={20} className={`mb-2 ${s.ic}`} />
-            <p className="text-3xl font-black text-gray-800">{s.value}</p>
-            <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-          </div>
-        ))}
+        <RevCard label="إجمالي طلباتي" value={String(total)}    sub="جميع الطلبات" icon={FileText}      accent="blue"   trend={null} />
+        <RevCard label="قيد التنفيذ"    value={String(active)}   sub="طلبات نشطة"  icon={Clock}         accent="amber"  trend={null} />
+        <RevCard label="معتمدة"         value={String(approved)} sub="تم اعتمادها"  icon={CheckCircle}   accent="green"  trend={null} />
+        <RevCard label="نواقص معلقة"    value={String(missing)}  sub="تحتاج متابعة"  icon={AlertTriangle} accent="red"    trend={null} />
       </div>
 
       {/* Commission Cards */}

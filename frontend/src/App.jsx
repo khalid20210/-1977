@@ -17,6 +17,7 @@ import PerformanceAdmin from './pages/PerformanceAdmin';
 import Reports from './pages/Reports';
 import Eligibility from './pages/Eligibility';
 import Commissions from './pages/Commissions';
+import Establishments from './pages/Establishments';
 
 function PrivateRoute({ children, adminOnly = false }) {
   const { user, loading, token } = useAuth();
@@ -72,6 +73,9 @@ function AppRoutes() {
       } />
       <Route path="/commissions" element={
         <PrivateRoute><Layout><Commissions /></Layout></PrivateRoute>
+      } />
+      <Route path="/establishments" element={
+        <PrivateRoute><Layout><Establishments /></Layout></PrivateRoute>
       } />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

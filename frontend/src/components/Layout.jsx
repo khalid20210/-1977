@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   LayoutDashboard, FileText, Users, Building2, UserCheck,
-  Settings, LogOut, Menu, X, ChevronLeft, Briefcase, Clock, CalendarDays, TrendingUp, BarChart2, Plus, ClipboardCheck, Award
+  Settings, LogOut, Menu, X, ChevronLeft, Briefcase, Clock, CalendarDays, TrendingUp, BarChart2, Plus, ClipboardCheck, Award, Bell, Store, CheckCheck, Trash2
 } from 'lucide-react';
 
 const navItems = [
@@ -32,6 +32,10 @@ export default function Layout({ children }) {
   const [pendingUsers, setPendingUsers] = useState(0);
   const [newUserToast, setNewUserToast] = useState(false);
   const prevPendingRef = React.useRef(null);
+  const [notifications, setNotifications] = React.useState([]);
+  const [unreadNotif, setUnreadNotif] = React.useState(0);
+  const [showNotifPanel, setShowNotifPanel] = React.useState(false);
+  const notifRef = React.useRef(null);
 
   const handleLogout = () => { logout(); navigate('/login'); };
   const handleNewRequest = () => { navigate('/requests?new=1'); };
@@ -104,6 +108,69 @@ export default function Layout({ children }) {
     const t = setInterval(loadPending, 15000);
     return () => { mounted = false; clearInterval(t); };
   }, [user?.role, location.pathname]);
+
+  // Notifications polling
+  React.useEffect(() => {
+    let mounted = true;
+    const loadNotifs = async () => {
+      try {
+        const res = await authFetch('/api/notifications');
+        if (res.ok && mounted) {
+          const data = await res.json();
+          const arr = Array.isArray(data) ? data : [];
+          setNotifications(arr);
+          setUnreadNotif(arr.filter(n => !n.is_read).length);
+        }
+      } catch (_) {}
+    };
+    loadNotifs();
+    const t = setInterval(loadNotifs, 25000);
+    return () => { mounted = false; clearInterval(t); };
+  }, [location.pathname]);
+
+  // Close notif panel on outside click
+  React.useEffect(() => {
+    const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifPanel(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const markAllRead = async () => {
+    try {
+      await authFetch('/api/notifications/read-all', { method: 'PATCH' });
+      setNotifications(n => n.map(x => ({ ...x, is_read: true })));
+      setUnreadNotif(0);
+    } catch (_) {}
+  };
+
+  const markRead = async (id) => {
+    try {
+      await authFetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
+      setNotifications(n => n.map(x => x.id === id ? { ...x, is_read: true } : x));
+      setUnreadNotif(prev => Math.max(0, prev - 1));
+    } catch (_) {}
+  };
+
+  const deleteNotif = async (id) => {
+    try {
+      await authFetch(`/api/notifications/${id}`, { method: 'DELETE' });
+      setNotifications(n => n.filter(x => x.id !== id));
+      setUnreadNotif(prev => {
+        const was = notifications.find(x => x.id === id);
+        return was && !was.is_read ? Math.max(0, prev - 1) : prev;
+      });
+    } catch (_) {}
+  };
+
+  const notifTypeIcon = (type) => {
+    switch(type) {
+      case 'message': return '\u{1F4AC}';
+      case 'update': return '\u{1F504}';
+      case 'warning': return '\u26A0\uFE0F';
+      case 'success': return '\u2705';
+      default: return '\u{1F514}';
+    }
+  };
 
   const allowed = navItems.filter(n => n.roles.includes(user?.role));
 
@@ -210,6 +277,19 @@ export default function Layout({ children }) {
                 <span>طلب جديد</span>
               </button>
             )}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifPanel(v => !v)}
+                className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition-colors"
+              >
+                <Bell size={16} />
+                {unreadNotif > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
+                    {unreadNotif > 9 ? '9+' : unreadNotif}
+                  </span>
+                )}
+              </button>
+            </div>
             <button
               onClick={handleLogout}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-semibold hover:bg-red-100"
@@ -232,6 +312,20 @@ export default function Layout({ children }) {
                   <span>رفع طلب جديد</span>
                 </button>
               )}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifPanel(v => !v)}
+                  className="relative inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors shadow-sm"
+                  title="التنبيهات"
+                >
+                  <Bell size={18} />
+                  {unreadNotif > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                      {unreadNotif > 9 ? '9+' : unreadNotif}
+                    </span>
+                  )}
+                </button>
+              </div>
               <button
                 onClick={handleLogout}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-bold hover:bg-red-100"
@@ -244,6 +338,66 @@ export default function Layout({ children }) {
           {children}
         </main>
       </div>
+
+      {/* Notification Bell Panel */}
+      {showNotifPanel && (
+        <div
+          ref={notifRef}
+          className="fixed top-16 left-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+          style={{ maxHeight: '80vh' }}
+          dir="rtl"
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #0d1b35, #1e3a8a)' }}>
+            <div className="flex items-center gap-2">
+              <Bell size={16} className="text-white" />
+              <span className="text-white font-bold text-sm">التنبيهات</span>
+              {unreadNotif > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">{unreadNotif}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {unreadNotif > 0 && (
+                <button onClick={markAllRead} title="تحديد الكل كمقروء" className="text-blue-200 hover:text-white transition-colors">
+                  <CheckCheck size={16} />
+                </button>
+              )}
+              <button onClick={() => setShowNotifPanel(false)} className="text-white/60 hover:text-white"><X size={16} /></button>
+            </div>
+          </div>
+          <div className="overflow-y-auto" style={{ maxHeight: 'calc(80vh - 60px)' }}>
+            {notifications.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <Bell size={28} className="mx-auto mb-2 opacity-30" />
+                <p className="text-sm">لا توجد تنبيهات</p>
+              </div>
+            ) : (
+              notifications.map(n => (
+                <div
+                  key={n.id}
+                  className={n.is_read ? "flex items-start gap-3 px-4 py-3 border-b border-gray-100 transition-colors hover:bg-gray-50" : "flex items-start gap-3 px-4 py-3 border-b border-gray-100 bg-blue-50/40 transition-colors hover:bg-blue-100/40"}
+                  onClick={() => { if (!n.is_read) markRead(n.id); if (n.link) navigate(n.link); }}
+                  style={{ cursor: n.link ? 'pointer' : 'default' }}
+                >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base bg-gray-100">
+                    {n.type === 'warning' ? '??' : n.type === 'success' ? '?' : n.type === 'message' ? '??' : n.type === 'update' ? '??' : '??'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate text-gray-800">{n.title}</p>
+                    {n.body && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{n.body}</p>}
+                    <p className="text-[10px] text-gray-300 mt-1">{new Date(n.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                    {!n.is_read && <span className="w-2 h-2 rounded-full bg-blue-500" />}
+                    <button onClick={(e) => { e.stopPropagation(); deleteNotif(n.id); }} className="text-gray-300 hover:text-red-400 transition-colors mt-1">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Toast إشعار مستخدم جديد */}
       {newUserToast && (
