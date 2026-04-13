@@ -149,13 +149,13 @@ router.get('/establishments', authMiddleware, async (req, res) => {
     const { search } = req.query;
     let query, params;
     if (req.user.role === 'admin') {
-      query = \SELECT c.*, u.name as added_by_name, u.role as added_by_role FROM companies c LEFT JOIN users u ON c.user_id = u.id\;
+      query = `SELECT c.*, u.name as added_by_name, u.role as added_by_role FROM companies c LEFT JOIN users u ON c.user_id = u.id`;
       params = [];
-      if (search) { query += ' WHERE c.company_name ILIKE \ OR c.owner_name ILIKE \ OR c.owner_phone ILIKE '; params.push(\%\%\); }
+      if (search) { query += ` WHERE c.company_name ILIKE $1 OR c.owner_name ILIKE $1 OR c.owner_phone ILIKE $1`; params.push(`%${search}%`); }
     } else {
-      query = \SELECT c.*, u.name as added_by_name, u.role as added_by_role FROM companies c LEFT JOIN users u ON c.user_id = u.id WHERE c.user_id = \;
+      query = `SELECT c.*, u.name as added_by_name, u.role as added_by_role FROM companies c LEFT JOIN users u ON c.user_id = u.id WHERE c.user_id = $1`;
       params = [req.user.id];
-      if (search) { query += ' AND (c.company_name ILIKE \ OR c.owner_name ILIKE \ OR c.owner_phone ILIKE \)'; params.push(\%\%\); }
+      if (search) { query += ` AND (c.company_name ILIKE $2 OR c.owner_name ILIKE $2 OR c.owner_phone ILIKE $2)`; params.push(`%${search}%`); }
     }
     query += ' ORDER BY c.created_at DESC';
     const rows = (await db.query(query, params)).rows;
@@ -168,7 +168,8 @@ router.post('/establishments', authMiddleware, async (req, res) => {
     const { company_name, owner_name, owner_phone, entity_type } = req.body;
     if (!company_name?.trim()) return res.status(400).json({ error: 'اسم المنشأة مطلوب' });
     const result = await db.prepare(
-      \INSERT INTO companies (company_name, owner_name, owner_phone, entity_type, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())    ).run(company_name.trim(), owner_name?.trim() || null, owner_phone?.trim() || null, entity_type || 'شركة', req.user.id);
+      `INSERT INTO companies (company_name, owner_name, owner_phone, entity_type, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`
+    ).run(company_name.trim(), owner_name?.trim() || null, owner_phone?.trim() || null, entity_type || 'شركة', req.user.id);
     res.status(201).json({ id: result.lastInsertRowid, message: 'تمت إضافة المنشأة بنجاح' });
   } catch (err) { console.error(err); res.status(500).json({ error: 'خطأ في إضافة المنشأة' }); }
 });
