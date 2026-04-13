@@ -9,6 +9,21 @@ const db = require('./database');
 
 const app = express();
 
+const allowedOrigins = new Set(
+  [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://khalid20210.github.io'
+  ].concat(
+    (process.env.FRONTEND_URLS || '')
+      .split(',')
+      .map(origin => origin.trim())
+      .filter(Boolean)
+  ).concat(
+    process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.trim()] : []
+  )
+);
+
 // Create upload directories
 ['uploads/bank-statements', 'uploads/documents', 'uploads/complete-files', 'uploads/contracts'].forEach(dir => {
   const full = path.join(__dirname, dir);
@@ -32,13 +47,14 @@ app.use(cors({
     // Allow requests with no origin (mobile, postman, server-to-server)
     if (!origin) return callback(null, true);
     // Allow any localhost port
-    if (/^http:\/\/localhost:\d+$/.test(origin)) return callback(null, true);
-    // Allow configured frontend URL
-    const allowed = process.env.FRONTEND_URL || 'http://localhost:5173';
-    if (origin === allowed) return callback(null, true);
+    if (/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) return callback(null, true);
+    // Allow configured frontend URLs and GitHub Pages origin
+    if (allowedOrigins.has(origin)) return callback(null, true);
     callback(new Error('CORS: origin not allowed'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
