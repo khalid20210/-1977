@@ -27,7 +27,8 @@ yarn-error.log*
 
 # Local env
 .env
-.env.*
+.env.local
+.env.*.local
 
 # Installer/binaries
 *.exe
