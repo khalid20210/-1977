@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Search, X, Store, Phone, User, Building2, Trash2, Calendar } from 'lucide-react';
+import { Plus, Search, X, Store, Phone, User, Building2, Trash2, Calendar, Eye, Edit2 } from 'lucide-react';
 
 const ENTITY_TYPES = ['شركة', 'مؤسسة', 'محل تجاري', 'مقاول', 'مزرعة', 'أخرى'];
 
@@ -14,84 +14,127 @@ const typeColors = {
 };
 
 export default function Establishments() {
-  const { authFetch, user } = useAuth();
+  const { authFetch } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة' });
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const load = async (query = search) => {
     setLoading(true);
     try {
-      const res = await authFetch('/api/establishments/establishments' + (search ? `?search=${encodeURIComponent(search)}` : ''));
+      const res = await authFetch('/api/admin/companies' + (query ? `?search=${encodeURIComponent(query)}` : ''));
       const data = res.ok ? await res.json() : [];
       setItems(Array.isArray(data) ? data : []);
-    } catch (_) { setItems([]); }
+    } catch (_) {
+      setItems([]);
+    }
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load('');
+  }, []);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    load();
+  const resetForm = () => {
+    setForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة' });
+    setSelectedItem(null);
+    setError('');
   };
 
-  const openModal = () => {
-    setForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة' });
+  const openCreate = () => {
+    resetForm();
+    setShowModal(true);
+  };
+
+  const openEdit = (item) => {
+    setSelectedItem(item);
+    setForm({
+      company_name: item.company_name || '',
+      owner_name: item.owner_name || '',
+      owner_phone: item.owner_phone || '',
+      entity_type: item.entity_type || 'شركة',
+    });
     setError('');
     setShowModal(true);
   };
 
+  const openDetails = (item) => {
+    setSelectedItem(item);
+    setShowDetails(true);
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    load(search);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.company_name.trim()) { setError('اسم المنشأة مطلوب'); return; }
+    if (!form.company_name.trim()) {
+      setError('اسم المنشأة مطلوب');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
     try {
-      const res = await authFetch('/api/establishments/establishments', {
-        method: 'POST',
+      const url = selectedItem ? `/api/admin/companies/${selectedItem.id}` : '/api/admin/companies';
+      const method = selectedItem ? 'PUT' : 'POST';
+      const res = await authFetch(url, {
+        method,
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || 'حدث خطأ'); }
-      else { setShowModal(false); load(); }
-    } catch (_) { setError('حدث خطأ في الاتصال'); }
+      if (!res.ok) {
+        setError(data.error || 'حدث خطأ');
+      } else {
+        setShowModal(false);
+        await load();
+      }
+    } catch (_) {
+      setError('حدث خطأ في الاتصال');
+    }
     setSubmitting(false);
   };
 
   const handleDelete = async (id) => {
     if (!confirm('هل تريد حذف هذه المنشأة؟')) return;
     try {
-      const res = await authFetch(`/api/establishments/establishments/${id}`, { method: 'DELETE' });
-      if (res.ok) { setItems(prev => prev.filter(x => x.id !== id)); }
-      else { const d = await res.json(); alert(d.error || 'خطأ في الحذف'); }
-    } catch (_) { alert('حدث خطأ'); }
+      const res = await authFetch(`/api/admin/companies/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setItems(prev => prev.filter(item => item.id !== id));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'خطأ في الحذف');
+      }
+    } catch (_) {
+      alert('حدث خطأ في الحذف');
+    }
   };
 
   const filtered = search
-    ? items.filter(i =>
-        i.company_name?.toLowerCase().includes(search.toLowerCase()) ||
-        i.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
-        i.owner_phone?.includes(search)
+    ? items.filter(item =>
+        item.company_name?.toLowerCase().includes(search.toLowerCase()) ||
+        item.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
+        item.owner_phone?.includes(search)
       )
     : items;
 
   return (
     <div dir="rtl">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">منشآتي</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {items.length} منشأة مسجلة
-          </p>
+          <h1 className="text-2xl font-black text-gray-900">المنشآت</h1>
+          <p className="text-gray-500 text-sm mt-1">{items.length} منشأة مسجلة</p>
         </div>
         <button
-          onClick={openModal}
+          onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition-all shadow-md"
           style={{ background: 'linear-gradient(135deg, #0d1b35, #2563eb)' }}
         >
@@ -100,7 +143,6 @@ export default function Establishments() {
         </button>
       </div>
 
-      {/* Search */}
       <form onSubmit={handleSearch} className="relative mb-5">
         <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
@@ -110,26 +152,24 @@ export default function Establishments() {
           className="w-full border border-gray-200 rounded-xl py-2.5 pr-10 pl-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {search && (
-          <button type="button" onClick={() => { setSearch(''); load(); }} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <button type="button" onClick={() => { setSearch(''); load(''); }} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             <X size={16} />
           </button>
         )}
       </form>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {ENTITY_TYPES.slice(0, 4).map(t => {
-          const count = items.filter(i => i.entity_type === t).length;
+        {ENTITY_TYPES.slice(0, 4).map(type => {
+          const count = items.filter(item => item.entity_type === type).length;
           return (
-            <div key={t} className={`rounded-xl p-3 text-center ${typeColors[t] || 'bg-gray-100 text-gray-600'}`}>
+            <div key={type} className={`rounded-xl p-3 text-center ${typeColors[type] || 'bg-gray-100 text-gray-600'}`}>
               <p className="text-2xl font-black">{count}</p>
-              <p className="text-xs font-medium mt-0.5">{t}</p>
+              <p className="text-xs font-medium mt-0.5">{type}</p>
             </div>
           );
         })}
       </div>
 
-      {/* List */}
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -143,9 +183,8 @@ export default function Establishments() {
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="divide-y divide-gray-50">
-            {filtered.map((item) => (
+            {filtered.map(item => (
               <div key={item.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
-                {/* Icon */}
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-black text-lg shadow-sm"
                   style={{ background: 'linear-gradient(135deg, #1e3a8a, #2563eb)' }}
@@ -153,7 +192,6 @@ export default function Establishments() {
                   {item.company_name?.[0]?.toUpperCase() || '?'}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-gray-900 text-sm">{item.company_name}</span>
@@ -183,15 +221,28 @@ export default function Establishments() {
                       {new Date(item.created_at).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </span>
                   </div>
-                  {item.added_by_name && (
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      أضافها: {item.added_by_name} ({item.added_by_role === 'employee' ? 'موظف' : 'شريك'})
-                    </p>
-                  )}
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    أضافها: {item.employee_name || item.added_by_name || '—'}
+                    {item.funding_entity_name ? ` - الجهة: ${item.funding_entity_name}` : ''}
+                    {item.request_status ? ` - الحالة: ${item.request_status}` : ''}
+                  </p>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => openDetails(item)}
+                    className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                    title="التفاصيل"
+                  >
+                    <Eye size={14} />
+                  </button>
+                  <button
+                    onClick={() => openEdit(item)}
+                    className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
+                    title="تعديل"
+                  >
+                    <Edit2 size={14} />
+                  </button>
                   {item.owner_phone && (
                     <a
                       href={`https://wa.me/966${item.owner_phone.replace(/^0/, '').replace(/\D/g, '')}`}
@@ -204,15 +255,13 @@ export default function Establishments() {
                       <Phone size={14} />
                     </a>
                   )}
-                  {(user?.role === 'admin' || item.user_id === user?.id) && (
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="p-2 rounded-lg bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-600 transition-colors"
-                      title="حذف"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="p-2 rounded-lg bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-600 transition-colors"
+                    title="حذف"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -220,43 +269,30 @@ export default function Establishments() {
         </div>
       )}
 
-      {/* Add Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" dir="rtl">
-            {/* Modal Header */}
-            <div
-              className="flex items-center justify-between px-6 py-4 rounded-t-2xl"
-              style={{ background: 'linear-gradient(135deg, #0d1b35, #1e3a8a)' }}
-            >
+            <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl" style={{ background: 'linear-gradient(135deg, #0d1b35, #1e3a8a)' }}>
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
                   <Building2 size={18} className="text-white" />
                 </div>
-                <h2 className="text-white font-bold text-base">إضافة منشأة جديدة</h2>
+                <h2 className="text-white font-bold text-base">{selectedItem ? 'تعديل المنشأة' : 'إضافة منشأة جديدة'}</h2>
               </div>
               <button onClick={() => setShowModal(false)} className="text-white/70 hover:text-white transition-colors">
                 <X size={20} />
               </button>
             </div>
 
-            {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
-                  {error}
-                </div>
-              )}
+              {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  اسم المنشأة <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">اسم المنشأة <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={form.company_name}
-                  onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))}
-                  placeholder="أدخل اسم المنشأة..."
+                  onChange={e => setForm(prev => ({ ...prev, company_name: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
@@ -266,10 +302,10 @@ export default function Establishments() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">نوع المنشأة</label>
                 <select
                   value={form.entity_type}
-                  onChange={e => setForm(f => ({ ...f, entity_type: e.target.value }))}
+                  onChange={e => setForm(prev => ({ ...prev, entity_type: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {ENTITY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                 </select>
               </div>
 
@@ -278,8 +314,7 @@ export default function Establishments() {
                 <input
                   type="text"
                   value={form.owner_name}
-                  onChange={e => setForm(f => ({ ...f, owner_name: e.target.value }))}
-                  placeholder="اسم صاحب المنشأة..."
+                  onChange={e => setForm(prev => ({ ...prev, owner_name: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -289,19 +324,14 @@ export default function Establishments() {
                 <input
                   type="tel"
                   value={form.owner_phone}
-                  onChange={e => setForm(f => ({ ...f, owner_phone: e.target.value }))}
-                  placeholder="05xxxxxxxx"
+                  onChange={e => setForm(prev => ({ ...prev, owner_phone: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   dir="ltr"
                 />
               </div>
 
-              {/* Added by (auto) */}
-              <div className="bg-blue-50 rounded-xl px-4 py-3 flex items-center gap-2">
-                <User size={14} className="text-blue-500 flex-shrink-0" />
-                <p className="text-xs text-blue-700">
-                  ستُحفظ هذه المنشأة باسمك تلقائياً: <span className="font-bold">{user?.name}</span>
-                </p>
+              <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-700">
+                يستطيع المدير من هنا مراجعة بيانات المنشأة وتعديلها أو حذفها وربطها بالطلبات الحالية.
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -311,17 +341,52 @@ export default function Establishments() {
                   className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-all shadow-md"
                   style={{ background: 'linear-gradient(135deg, #0d1b35, #2563eb)' }}
                 >
-                  {submitting ? 'جارٍ الحفظ...' : 'حفظ المنشأة'}
+                  {submitting ? 'جارٍ الحفظ...' : selectedItem ? 'حفظ التعديلات' : 'حفظ المنشأة'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all"
-                >
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all">
                   إلغاء
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDetails && selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" dir="rtl">
+            <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl" style={{ background: 'linear-gradient(135deg, #0d1b35, #1e3a8a)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Store size={18} className="text-white" />
+                </div>
+                <h2 className="text-white font-bold text-base">تفاصيل المنشأة</h2>
+              </div>
+              <button onClick={() => setShowDetails(false)} className="text-white/70 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="rounded-xl bg-gray-50 p-4"><div className="text-gray-400 text-xs mb-1">اسم المنشأة</div><div className="font-bold text-gray-900">{selectedItem.company_name || '—'}</div></div>
+              <div className="rounded-xl bg-gray-50 p-4"><div className="text-gray-400 text-xs mb-1">نوع المنشأة</div><div className="font-bold text-gray-900">{selectedItem.entity_type || '—'}</div></div>
+              <div className="rounded-xl bg-gray-50 p-4"><div className="text-gray-400 text-xs mb-1">اسم المالك</div><div className="font-bold text-gray-900">{selectedItem.owner_name || '—'}</div></div>
+              <div className="rounded-xl bg-gray-50 p-4"><div className="text-gray-400 text-xs mb-1">الجوال</div><div className="font-bold text-gray-900">{selectedItem.owner_phone || '—'}</div></div>
+              <div className="rounded-xl bg-gray-50 p-4"><div className="text-gray-400 text-xs mb-1">أضافها</div><div className="font-bold text-gray-900">{selectedItem.employee_name || selectedItem.added_by_name || '—'}</div></div>
+              <div className="rounded-xl bg-gray-50 p-4"><div className="text-gray-400 text-xs mb-1">الجهة التمويلية</div><div className="font-bold text-gray-900">{selectedItem.funding_entity_name || '—'}</div></div>
+              <div className="rounded-xl bg-gray-50 p-4"><div className="text-gray-400 text-xs mb-1">حالة الطلب</div><div className="font-bold text-gray-900">{selectedItem.request_status || '—'}</div></div>
+              <div className="rounded-xl bg-gray-50 p-4"><div className="text-gray-400 text-xs mb-1">التاريخ</div><div className="font-bold text-gray-900">{selectedItem.created_at ? new Date(selectedItem.created_at).toLocaleString('ar-SA') : '—'}</div></div>
+            </div>
+
+            <div className="px-6 pb-6 flex gap-3">
+              <button onClick={() => { setShowDetails(false); openEdit(selectedItem); }} className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-all inline-flex items-center justify-center gap-2">
+                <Edit2 size={15} />
+                تعديل
+              </button>
+              <button onClick={() => setShowDetails(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all">
+                إغلاق
+              </button>
+            </div>
           </div>
         </div>
       )}

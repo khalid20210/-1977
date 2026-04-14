@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../database');
 const { authMiddleware } = require('../middleware/authMiddleware');
+const { notifyAdmins } = require('../services/notificationService');
 
 const router = express.Router();
 const jwtSecret = process.env.JWT_SECRET;
@@ -25,6 +26,13 @@ router.post('/register', async (req, res) => {
       INSERT INTO users (name, email, password, role, partner_type, phone, status)
       VALUES (?, ?, ?, ?, ?, ?, 'pending')
     `).run(name.trim(), email.toLowerCase().trim(), hashed, role, partner_type || null, phone || null);
+
+    await notifyAdmins({
+      type: 'general',
+      title: 'طلب تسجيل جديد',
+      body: `${name.trim()} سجل حساباً جديداً بصفة ${role === 'employee' ? 'موظف' : 'شريك'}`,
+      link: '/users',
+    });
 
     res.status(201).json({ message: 'تم التسجيل بنجاح. سيتم مراجعة حسابك من قبل المدير قريباً.', userId: result.lastInsertRowid });
   } catch (err) {

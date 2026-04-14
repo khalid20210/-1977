@@ -75,7 +75,7 @@ function AppRoutes() {
         <PrivateRoute><Layout><Commissions /></Layout></PrivateRoute>
       } />
       <Route path="/establishments" element={
-        <PrivateRoute><Layout><Establishments /></Layout></PrivateRoute>
+        <PrivateRoute adminOnly><Layout><Establishments /></Layout></PrivateRoute>
       } />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

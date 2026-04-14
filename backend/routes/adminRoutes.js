@@ -1,6 +1,7 @@
 ﻿const express = require('express');
 const db = require('../database');
 const { adminMiddleware } = require('../middleware/authMiddleware');
+const { createNotification, notifyAdmins } = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -69,10 +70,33 @@ router.put('/users/:id/status', adminMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     if (!['approved', 'blocked', 'pending'].includes(status)) return res.status(400).json({ error: 'حالة غير صحيحة' });
-    const user = await db.prepare('SELECT role FROM users WHERE id = ?').get(req.params.id);
+    const user = await db.prepare('SELECT id, name, role FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (user.role === 'admin') return res.status(403).json({ error: 'لا يمكن تغيير حالة الأدمن' });
     await db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, req.params.id);
+
+    const statusPayload = {
+      approved: {
+        type: 'success',
+        title: 'تم اعتماد حسابك',
+        body: 'يمكنك الآن تسجيل الدخول واستخدام المنصة.',
+        link: '/dashboard',
+      },
+      blocked: {
+        type: 'warning',
+        title: 'تم حظر حسابك',
+        body: 'تم تغيير حالة حسابك إلى محظور. تواصل مع الإدارة للمراجعة.',
+        link: '/dashboard',
+      },
+      pending: {
+        type: 'update',
+        title: 'تمت إعادة حسابك للمراجعة',
+        body: 'حسابك عاد إلى حالة المراجعة مؤقتاً.',
+        link: '/dashboard',
+      },
+    };
+
+    await createNotification(user.id, statusPayload[status]);
     res.json({ message: 'تم تحديث الحالة بنجاح' });
   } catch (err) {
     console.error(err);
@@ -163,6 +187,8 @@ router.put('/requests/:id/status', adminMiddleware, async (req, res) => {
       'contract_submitted','forms_ready','forms_sent','file_submitted','missing','missing_submitted',
       'contract_received','submitted','approved','transferred','fees_received','rejected'];
     if (!validStatuses.includes(status)) return res.status(400).json({ error: 'حالة غير صحيحة' });
+    const request = await db.prepare('SELECT id, user_id, company_name FROM requests WHERE id = ?').get(req.params.id);
+    if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (status === 'rejected' && rejection_reason) {
       await db.prepare("UPDATE requests SET status = ?, rejection_reason = ?, updated_at = NOW() WHERE id = ?")
         .run(status, rejection_reason, req.params.id);
@@ -171,6 +197,34 @@ router.put('/requests/:id/status', adminMiddleware, async (req, res) => {
     }
     await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)')
       .run(req.params.id, status, note || rejection_reason || null, req.user.id);
+
+    const statusLabels = {
+      draft: 'مسودة',
+      bank_uploaded: 'كشف مرفوع',
+      analyzing: 'قيد التحليل',
+      analyzed: 'تم التحليل',
+      docs_pending: 'وثائق ناقصة',
+      docs_ready: 'الوثائق جاهزة',
+      contract_submitted: 'العقد مُرسل',
+      forms_ready: 'النماذج جاهزة',
+      forms_sent: 'النماذج مرسلة',
+      file_submitted: 'الملف مقدم',
+      missing: 'نواقص',
+      missing_submitted: 'تم استكمال النواقص',
+      contract_received: 'تم استلام العقد',
+      submitted: 'تم تقديمه للجهة',
+      approved: 'تمت الموافقة',
+      transferred: 'تم التحويل',
+      fees_received: 'تم استلام العمولة',
+      rejected: 'مرفوض',
+    };
+
+    await createNotification(request.user_id, {
+      type: status === 'rejected' ? 'warning' : status === 'approved' || status === 'fees_received' ? 'success' : 'update',
+      title: `تحديث على طلب ${request.company_name}`,
+      body: `${statusLabels[status] || status}${note || rejection_reason ? ` - ${note || rejection_reason}` : ''}`,
+      link: `/requests?view=${request.id}`,
+    });
     res.json({ message: 'تم تحديث حالة الطلب' });
   } catch (err) {
     console.error(err);
@@ -183,12 +237,21 @@ router.post('/requests/:id/send-missing', adminMiddleware, async (req, res) => {
     const { missing_items, note } = req.body;
     if (!missing_items || !Array.isArray(missing_items) || missing_items.length === 0)
       return res.status(400).json({ error: 'قائمة النواقص مطلوبة' });
+    const request = await db.prepare('SELECT id, user_id, company_name FROM requests WHERE id = ?').get(req.params.id);
+    if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     for (const item of missing_items) {
       await db.prepare("INSERT INTO request_documents (request_id, document_name, status) VALUES (?, ?, 'missing')").run(req.params.id, item);
     }
     await db.prepare("UPDATE requests SET status = 'missing', updated_at = NOW() WHERE id = ?").run(req.params.id);
     await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)')
       .run(req.params.id, 'missing', `نواقص مطلوبة: ${missing_items.join('، ')}${note ? ' - ' + note : ''}`, req.user.id);
+
+    await createNotification(request.user_id, {
+      type: 'warning',
+      title: `نواقص مطلوبة لطلب ${request.company_name}`,
+      body: `${missing_items.join('، ')}${note ? ` - ${note}` : ''}`,
+      link: `/requests?view=${request.id}`,
+    });
     res.json({ message: 'تم إرسال النواقص للموظف' });
   } catch (err) {
     console.error(err);
@@ -341,7 +404,7 @@ router.post('/requests/:id/assign-funding', adminMiddleware, async (req, res) =>
     const { funding_entity_id, contact_id, note } = req.body;
     if (!funding_entity_id) return res.status(400).json({ error: 'الجهة التمويلية مطلوبة' });
     const [request, entity] = await Promise.all([
-      db.prepare('SELECT id FROM requests WHERE id = ?').get(req.params.id),
+      db.prepare('SELECT id, user_id, company_name FROM requests WHERE id = ?').get(req.params.id),
       db.prepare('SELECT id, name FROM funding_entities WHERE id = ?').get(funding_entity_id),
     ]);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
@@ -356,6 +419,12 @@ router.post('/requests/:id/assign-funding', adminMiddleware, async (req, res) =>
     const historyNote = [`تم إرسال الطلب إلى ${entity.name}`, contactName ? `المسؤول: ${contactName}` : null, note || null].filter(Boolean).join(' | ');
     await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)')
       .run(req.params.id, 'submitted', historyNote, req.user.id);
+    await createNotification(request.user_id, {
+      type: 'update',
+      title: `تم إرسال طلب ${request.company_name} للجهة التمويلية`,
+      body: historyNote,
+      link: `/requests?view=${request.id}`,
+    });
     res.json({ message: `تم إرسال الطلب إلى ${entity.name}` });
   } catch (err) {
     console.error(err);
@@ -982,6 +1051,13 @@ router.put('/targets/:userId/:month', adminMiddleware, async (req, res) => {
       ON CONFLICT(user_id, month) DO UPDATE SET
         target_requests=EXCLUDED.target_requests, target_approved=EXCLUDED.target_approved, target_revenue=EXCLUDED.target_revenue`
     ).run(req.params.userId, req.params.month, target_requests || 0, target_approved || 0, target_revenue || 0, req.user.id);
+
+    await createNotification(req.params.userId, {
+      type: 'update',
+      title: 'تم تحديث هدفك الشهري',
+      body: `الشهر ${req.params.month}: طلبات ${target_requests || 0} - معتمد ${target_approved || 0} - إيراد ${target_revenue || 0}`,
+      link: '/dashboard',
+    });
     res.json({ message: 'تم حفظ الهدف' });
   } catch (err) {
     console.error(err);

@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../database');
 const { authMiddleware } = require('../middleware/authMiddleware');
+const { createNotification, notifyAdmins } = require('../services/notificationService');
 const { analyzeBankStatement, analyzeDocument } = require('../services/aiService');
 
 const router = express.Router();
@@ -196,6 +197,12 @@ router.post('/', authMiddleware, async (req, res) => {
     `).run(company_name.trim(), entity_type || 'شركة', owner_name || null, owner_phone || null, reqId, req.user.id);
 
     const request = await db.prepare('SELECT * FROM requests WHERE id = ?').get(reqId);
+    await notifyAdmins({
+      type: 'general',
+      title: 'طلب جديد بانتظار المراجعة',
+      body: `${req.user.name} أضاف طلب ${company_name.trim()}`,
+      link: `/requests?view=${reqId}`,
+    }, { excludeUserId: req.user.id });
     res.status(201).json(request);
   } catch (err) {
     console.error(err);
@@ -284,6 +291,22 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
       LEFT JOIN users u ON u.id = rm.sender_id
       WHERE rm.id = ?
     `).get(r.lastInsertRowid);
+
+    if (req.user.role === 'admin') {
+      await createNotification(request.user_id, {
+        type: 'message',
+        title: `رسالة جديدة على طلب ${request.company_name}`,
+        body: message,
+        link: `/requests?view=${request.id}`,
+      });
+    } else {
+      await notifyAdmins({
+        type: 'message',
+        title: `رسالة جديدة من ${req.user.name}`,
+        body: `${request.company_name}: ${message}`,
+        link: `/requests?view=${request.id}`,
+      }, { excludeUserId: req.user.id });
+    }
 
     res.status(201).json(created);
   } catch (err) {
@@ -578,6 +601,13 @@ router.post('/:id/submit-file', authMiddleware, completeUpload.single('file'), a
       req.params.id, 'file_submitted', 'تم رفع الملف الكامل من الموظف', req.user.id
     );
 
+    await notifyAdmins({
+      type: 'update',
+      title: `تم رفع الملف الكامل لطلب ${request.company_name}`,
+      body: `${req.user.name} رفع الملف الكامل بانتظار مراجعة الإدارة.`,
+      link: `/requests?view=${request.id}`,
+    }, { excludeUserId: req.user.id });
+
     res.json({ message: 'تم إرسال الملف للمدير بنجاح. سيتم مراجعته قريباً.' });
   } catch (err) {
     console.error(err);
@@ -595,6 +625,13 @@ router.post('/:id/submit-missing', authMiddleware, async (req, res) => {
     await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
       req.params.id, 'missing_submitted', 'تم إرسال النواقص من الموظف', req.user.id
     );
+
+    await notifyAdmins({
+      type: 'update',
+      title: `تم استكمال نواقص طلب ${request.company_name}`,
+      body: `${req.user.name} أعاد إرسال النواقص للمراجعة.`,
+      link: `/requests?view=${request.id}`,
+    }, { excludeUserId: req.user.id });
 
     res.json({ message: 'تم إرسال النواقص للمدير بنجاح' });
   } catch (err) {

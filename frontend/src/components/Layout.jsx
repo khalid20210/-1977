@@ -15,7 +15,7 @@ const navItems = [
   { path: '/performance',     label: 'تحليل الأداء',  icon: TrendingUp,      roles: ['admin'] },
   { path: '/reports',         label: 'التقارير',        icon: BarChart2,       roles: ['admin'] },
   { path: '/eligibility',     label: 'أهلية المنشأة',  icon: ClipboardCheck,  roles: ['admin', 'employee', 'partner'] },
-  { path: '/establishments',  label: 'منشآتي',         icon: Store,           roles: ['employee', 'partner'] },
+  { path: '/establishments',  label: 'المنشآت',        icon: Store,           roles: ['admin'] },
   { path: '/brokers',         label: 'الوسطاء',        icon: UserCheck,       roles: ['admin', 'employee'] },
   { path: '/companies',       label: 'جهات التمويل', icon: Building2,       roles: ['admin'] },
   { path: '/users',           label: 'المستخدمون',   icon: Users,           roles: ['admin'] },
@@ -37,6 +37,7 @@ export default function Layout({ children }) {
   const [unreadNotif, setUnreadNotif] = React.useState(0);
   const [showNotifPanel, setShowNotifPanel] = React.useState(false);
   const [newNotifToast, setNewNotifToast] = React.useState(null);
+  const [expandedNotifId, setExpandedNotifId] = React.useState(null);
   const notifRef = React.useRef(null);
   const prevUnreadRef = React.useRef(null);
 
@@ -175,6 +176,16 @@ export default function Layout({ children }) {
     } catch (_) {}
   };
 
+  const openNotification = async (notif) => {
+    if (!notif.is_read) await markRead(notif.id);
+    if (notif.link) {
+      navigate(notif.link);
+      setShowNotifPanel(false);
+      return;
+    }
+    setExpandedNotifId(prev => prev === notif.id ? null : notif.id);
+  };
+
   const notifTypeIcon = (type) => {
     switch(type) {
       case 'message': return '💬';
@@ -292,7 +303,7 @@ export default function Layout({ children }) {
             )}
             <div className="relative">
               <button
-                onClick={() => setShowNotifPanel(v => !v)}
+                  onClick={() => setShowNotifPanel(v => !v)}
                 className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition-colors"
               >
                 <Bell size={16} />
@@ -316,7 +327,7 @@ export default function Layout({ children }) {
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <div className="hidden lg:flex items-center mb-4">
             <div className="mr-auto flex items-center gap-2" dir="ltr">
-              {canCreateRequest && (
+              {canCreateRequest && location.pathname !== '/requests' && (
                 <button
                   onClick={handleNewRequest}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 shadow-sm"
@@ -388,7 +399,7 @@ export default function Layout({ children }) {
                 <div
                   key={n.id}
                   className={n.is_read ? "flex items-start gap-3 px-4 py-3 border-b border-gray-100 transition-colors hover:bg-gray-50" : "flex items-start gap-3 px-4 py-3 border-b border-gray-100 bg-blue-50/60 transition-colors hover:bg-blue-100/50"}
-                  onClick={() => { if (!n.is_read) markRead(n.id); if (n.link) { navigate(n.link); setShowNotifPanel(false); } }}
+                  onClick={() => openNotification(n)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base bg-gray-100">
@@ -396,8 +407,12 @@ export default function Layout({ children }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold truncate ${n.is_read ? 'text-gray-700' : 'text-gray-900'}`}>{n.title}</p>
-                    {n.body && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{n.body}</p>}
+                    {n.body && <p className={`text-xs text-gray-400 mt-0.5 ${expandedNotifId === n.id ? '' : 'line-clamp-2'}`}>{n.body}</p>}
                     <p className="text-[10px] text-gray-300 mt-1">{new Date(n.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      {n.link && <span className="text-[11px] font-semibold text-blue-600">عرض التفاصيل</span>}
+                      {!n.link && n.body && <span className="text-[11px] font-semibold text-blue-600">{expandedNotifId === n.id ? 'إخفاء التفاصيل' : 'إظهار التفاصيل'}</span>}
+                    </div>
                   </div>
                   <div className="flex flex-col items-center gap-1 flex-shrink-0">
                     {!n.is_read && <span className="w-2 h-2 rounded-full bg-blue-500" />}

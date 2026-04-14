@@ -216,6 +216,13 @@ export default function Requests() {
     }
   }, [location.search]);
 
+  useEffect(() => {
+    const viewId = new URLSearchParams(location.search).get('view');
+    if (!viewId || loading || reviewReq) return;
+    const match = requests.find(r => String(r.id) === String(viewId));
+    if (match) openReview(match);
+  }, [requests, loading, location.search]);
+
   const createRequest = async (e) => {
     e.preventDefault();
     setSubmittingNew(true);
@@ -313,6 +320,22 @@ export default function Requests() {
     const url = isAdmin ? `/api/admin/requests/${requestId}` : `/api/requests/${requestId}`;
     const res = await authFetch(url);
     setReviewData(res.ok ? await res.json() : null);
+  };
+
+  const closeReview = () => {
+    setReviewReq(null);
+    setReviewData(null);
+    setChatMessages([]);
+    setChatText('');
+    setSuggestedEntities([]);
+    setReviewBankFiles([]);
+    setReviewDocsFile(null);
+    setReviewTaxFiles([]);
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('view')) {
+      navigate('/requests', { replace: true });
+    }
   };
 
   const uploadMissingDoc = async (docId, file) => {
@@ -419,11 +442,6 @@ export default function Requests() {
           <h1 className="text-2xl font-black text-gray-900">الطلبات</h1>
           <p className="text-gray-400 text-sm mt-0.5">{requests.length} طلب إجمالاً</p>
         </div>
-        {(isAdmin || user?.role === 'employee' || user?.role === 'partner') && (
-          <button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm hover:opacity-90 shadow-sm" style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}>
-            <Plus size={16} /> طلب جديد
-          </button>
-        )}
       </div>
 
       <div className="flex flex-wrap gap-3 mb-5">
@@ -723,7 +741,7 @@ export default function Requests() {
                 <h2 className="text-lg font-black text-gray-900">{reviewReq.company_name}</h2>
                 <p className="text-gray-400 text-xs mt-0.5">طلب رقم #{reviewReq.id}</p>
               </div>
-              <button onClick={() => { setReviewReq(null); setReviewData(null); setChatMessages([]); setChatText(''); setSuggestedEntities([]); setReviewBankFiles([]); setReviewDocsFile(null); setReviewTaxFiles([]); }} className="text-gray-500 hover:text-gray-700 p-1"><X size={20} /></button>
+              <button onClick={closeReview} className="text-gray-500 hover:text-gray-700 p-1"><X size={20} /></button>
             </div>
             {loadingReview ? (
               <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
