@@ -59,12 +59,10 @@ export default function Login() {
         {/* شعار */}
         <div className="flex justify-start">
           <div>
-            <div className="flex items-end gap-0" style={{ lineHeight: 1 }}>
-              <span className="text-white font-black" style={{ fontSize: '2.6rem', fontFamily: 'Georgia, serif' }}>J</span>
-              <span className="text-white font-light" style={{ fontSize: '1.5rem', letterSpacing: '0.05em', marginBottom: '4px' }}>enan</span>
+            <div className="inline-flex rounded-[26px] bg-white/95 px-5 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.16)] ring-1 ring-white/30">
+              <img src="/logo.svg" alt="Jenan BIZ" className="h-16 w-auto object-contain" />
             </div>
-            <div className="text-blue-300 font-bold" style={{ fontSize: '0.65rem', letterSpacing: '0.5em', marginTop: '-2px' }}>BIZ</div>
-            <div className="text-blue-200 text-xs mt-1 opacity-70">منصة متكاملة • تحليل وإدارة الاستشارات الإدارية</div>
+            <div className="text-blue-200 text-xs mt-3 opacity-70">منصة متكاملة • تحليل وإدارة الاستشارات الإدارية</div>
           </div>
         </div>
 
