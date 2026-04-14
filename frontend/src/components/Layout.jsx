@@ -207,7 +207,7 @@ export default function Layout({ children }) {
 
   const allowed = navItems.filter(n => n.roles.includes(user?.role));
 
-  const NotificationDropdown = ({ buttonClassName, iconSize, badgeClassName, panelClassName }) => (
+  const NotificationDropdown = ({ buttonClassName, iconSize, badgeClassName, panelClassName, arrowClassName = '' }) => (
     <div ref={notifRef} className="relative">
       <button
         onClick={toggleNotifPanel}
@@ -227,18 +227,20 @@ export default function Layout({ children }) {
           className={panelClassName}
           dir="rtl"
         >
-          <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-slate-200 bg-white shadow-sm" />
+          <div className={`absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-slate-200 bg-white shadow-sm ${arrowClassName}`} />
           <div className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur">
-            <div className="border-b border-slate-100 px-5 pb-4 pt-5 text-center">
+            <div className="border-b border-slate-100 px-4 pb-4 pt-4 text-center sm:px-5 sm:pt-5">
               <div className="flex items-center justify-between gap-2">
                 <button onClick={() => setShowNotifPanel(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
                   <X size={15} />
                 </button>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-xl font-black tracking-tight text-slate-800">التنبيهات</span>
-                  <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-cyan-500 px-2 py-1 text-xs font-black text-white shadow-sm">
-                    {unreadNotif > 99 ? '99+' : unreadNotif}
-                  </span>
+                <div className="flex items-center justify-center gap-2 min-w-0">
+                  <span className="text-lg font-black tracking-tight text-slate-800 sm:text-xl">التنبيهات</span>
+                  {unreadNotif > 0 && (
+                    <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-cyan-500 px-2 py-1 text-xs font-black text-white shadow-sm">
+                      {unreadNotif > 99 ? '99+' : unreadNotif}
+                    </span>
+                  )}
                 </div>
                 {unreadNotif > 0 ? (
                   <button onClick={markAllRead} title="تحديد الكل كمقروء" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-sky-600">
@@ -246,12 +248,12 @@ export default function Layout({ children }) {
                   </button>
                 ) : <span className="h-8 w-8" />}
               </div>
-              <p className="mt-2 text-xs font-medium text-slate-400">آخر التحديثات والرسائل الخاصة بك</p>
+              <p className="mt-2 text-[11px] font-medium text-slate-400 sm:text-xs">آخر التحديثات والرسائل الخاصة بك</p>
             </div>
 
             <div className="max-h-[26rem] overflow-y-auto bg-slate-50/60">
               {notifications.length === 0 ? (
-                <div className="bg-white px-6 py-12 text-center text-slate-400">
+                <div className="bg-white px-6 py-10 text-center text-slate-400 sm:py-12">
                   <Bell size={30} className="mx-auto mb-3 opacity-30" />
                   <p className="text-sm font-medium">لا توجد تنبيهات حالياً</p>
                 </div>
@@ -263,22 +265,22 @@ export default function Layout({ children }) {
                     return (
                       <div
                         key={n.id}
-                        className={`group flex items-start gap-3 border-b border-slate-100 px-4 py-4 last:border-b-0 transition-colors ${n.is_read ? 'bg-white hover:bg-slate-50' : 'bg-sky-50/55 hover:bg-sky-50'}`}
+                        className={`group flex items-start gap-3 border-b border-slate-100 px-4 py-3.5 last:border-b-0 transition-colors sm:py-4 ${n.is_read ? 'bg-white hover:bg-slate-50' : 'bg-sky-50/55 hover:bg-sky-50'}`}
                         onClick={() => openNotification(n)}
                         style={{ cursor: 'pointer' }}
                       >
                         <div className="pt-1">
-                          <span className={`flex h-11 w-11 items-center justify-center rounded-full ${meta.bgClass}`}>
-                            <Icon size={18} className={meta.iconClass} />
+                          <span className={`flex h-10 w-10 items-center justify-center rounded-full sm:h-11 sm:w-11 ${meta.bgClass}`}>
+                            <Icon size={17} className={meta.iconClass} />
                           </span>
                         </div>
                         <div className="min-w-0 flex-1 overflow-hidden">
                           <div className="flex items-start gap-2">
                             {!n.is_read && <span className="mt-2 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-rose-400" />}
                             <div className="min-w-0 flex-1">
-                              <p className={`text-sm font-extrabold leading-6 break-words whitespace-normal ${n.is_read ? 'text-slate-700' : 'text-slate-900'}`}>{n.title}</p>
+                              <p className={`text-[13px] font-extrabold leading-6 break-words whitespace-normal sm:text-sm ${n.is_read ? 'text-slate-700' : 'text-slate-900'}`}>{n.title}</p>
                               {n.body && (
-                                <p className={`mt-0.5 text-[13px] leading-6 text-slate-500 break-words whitespace-normal overflow-hidden ${expandedNotifId === n.id ? '' : 'line-clamp-2'}`}>
+                                <p className={`mt-0.5 text-[12px] leading-5 text-slate-500 break-words whitespace-normal overflow-hidden sm:text-[13px] sm:leading-6 ${expandedNotifId === n.id ? '' : 'line-clamp-2'}`}>
                                   {n.body}
                                 </p>
                               )}
@@ -416,7 +418,8 @@ export default function Layout({ children }) {
               buttonClassName="relative inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition-colors"
               iconSize={16}
               badgeClassName="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center"
-              panelClassName="absolute top-full left-1/2 z-50 mt-4 w-[min(22rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] -translate-x-1/2"
+              panelClassName="fixed inset-x-3 top-[4.9rem] z-50 sm:absolute sm:inset-x-auto sm:top-full sm:left-1/2 sm:mt-4 sm:w-[min(22rem,calc(100vw-1.5rem))] sm:max-w-[calc(100vw-1.5rem)] sm:-translate-x-1/2"
+              arrowClassName="hidden sm:block"
             />
             <button
               onClick={handleLogout}
