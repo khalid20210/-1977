@@ -9,6 +9,9 @@ const db = require('./database');
 
 const app = express();
 
+// Trust reverse proxy (required for Render, Railway, Heroku, etc.)
+app.set('trust proxy', 1);
+
 const allowedOrigins = new Set(
   [
     'http://localhost:5173',
