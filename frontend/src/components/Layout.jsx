@@ -36,7 +36,9 @@ export default function Layout({ children }) {
   const [notifications, setNotifications] = React.useState([]);
   const [unreadNotif, setUnreadNotif] = React.useState(0);
   const [showNotifPanel, setShowNotifPanel] = React.useState(false);
+  const [newNotifToast, setNewNotifToast] = React.useState(null);
   const notifRef = React.useRef(null);
+  const prevUnreadRef = React.useRef(null);
 
   const handleLogout = () => { logout(); navigate('/login'); };
   const handleNewRequest = () => { navigate('/requests?new=1'); };
@@ -119,13 +121,23 @@ export default function Layout({ children }) {
         if (res.ok && mounted) {
           const data = await res.json();
           const arr = Array.isArray(data) ? data : [];
+          const unread = arr.filter(n => !n.is_read).length;
+          // إظهار toast عند وصول تنبيه جديد
+          if (prevUnreadRef.current !== null && unread > prevUnreadRef.current) {
+            const newest = arr.find(n => !n.is_read);
+            if (newest) {
+              setNewNotifToast(newest);
+              setTimeout(() => setNewNotifToast(null), 6000);
+            }
+          }
+          prevUnreadRef.current = unread;
           setNotifications(arr);
-          setUnreadNotif(arr.filter(n => !n.is_read).length);
+          setUnreadNotif(unread);
         }
       } catch (_) {}
     };
     loadNotifs();
-    const t = setInterval(loadNotifs, 25000);
+    const t = setInterval(loadNotifs, 15000);
     return () => { mounted = false; clearInterval(t); };
   }, [location.pathname]);
 
@@ -165,11 +177,11 @@ export default function Layout({ children }) {
 
   const notifTypeIcon = (type) => {
     switch(type) {
-      case 'message': return '\u{1F4AC}';
-      case 'update': return '\u{1F504}';
-      case 'warning': return '\u26A0\uFE0F';
-      case 'success': return '\u2705';
-      default: return '\u{1F514}';
+      case 'message': return '💬';
+      case 'update':  return '🔄';
+      case 'warning': return '⚠️';
+      case 'success': return '✅';
+      default:        return '🔔';
     }
   };
 
@@ -344,7 +356,7 @@ export default function Layout({ children }) {
       {showNotifPanel && (
         <div
           ref={notifRef}
-          className="fixed top-16 left-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+          className="fixed top-16 left-4 lg:top-16 lg:left-auto lg:right-44 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
           style={{ maxHeight: '80vh' }}
           dir="rtl"
         >
@@ -375,15 +387,15 @@ export default function Layout({ children }) {
               notifications.map(n => (
                 <div
                   key={n.id}
-                  className={n.is_read ? "flex items-start gap-3 px-4 py-3 border-b border-gray-100 transition-colors hover:bg-gray-50" : "flex items-start gap-3 px-4 py-3 border-b border-gray-100 bg-blue-50/40 transition-colors hover:bg-blue-100/40"}
-                  onClick={() => { if (!n.is_read) markRead(n.id); if (n.link) navigate(n.link); }}
-                  style={{ cursor: n.link ? 'pointer' : 'default' }}
+                  className={n.is_read ? "flex items-start gap-3 px-4 py-3 border-b border-gray-100 transition-colors hover:bg-gray-50" : "flex items-start gap-3 px-4 py-3 border-b border-gray-100 bg-blue-50/60 transition-colors hover:bg-blue-100/50"}
+                  onClick={() => { if (!n.is_read) markRead(n.id); if (n.link) { navigate(n.link); setShowNotifPanel(false); } }}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base bg-gray-100">
-                    {n.type === 'warning' ? '??' : n.type === 'success' ? '?' : n.type === 'message' ? '??' : n.type === 'update' ? '??' : '??'}
+                    {notifTypeIcon(n.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate text-gray-800">{n.title}</p>
+                    <p className={`text-sm font-semibold truncate ${n.is_read ? 'text-gray-700' : 'text-gray-900'}`}>{n.title}</p>
                     {n.body && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{n.body}</p>}
                     <p className="text-[10px] text-gray-300 mt-1">{new Date(n.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
@@ -397,6 +409,28 @@ export default function Layout({ children }) {
               ))
             )}
           </div>
+        </div>
+      )}
+
+      {/* Toast تنبيه جديد */}
+      {newNotifToast && (
+        <div
+          className="fixed bottom-6 right-6 z-50 flex items-start gap-3 px-4 py-4 rounded-2xl shadow-2xl cursor-pointer animate-bounce-once"
+          style={{ background: 'linear-gradient(135deg, #0d1b35, #1e3a8a)', minWidth: 280, maxWidth: 340 }}
+          onClick={() => { setNewNotifToast(null); setShowNotifPanel(true); }}
+          dir="rtl"
+        >
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-lg">
+            {notifTypeIcon(newNotifToast.type)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-white font-bold text-sm">تنبيه جديد</div>
+            <div className="text-blue-200 text-xs mt-0.5 truncate">{newNotifToast.title}</div>
+            {newNotifToast.body && <div className="text-blue-300 text-[11px] mt-0.5 line-clamp-1">{newNotifToast.body}</div>}
+          </div>
+          <button onClick={(e) => { e.stopPropagation(); setNewNotifToast(null); }} className="text-white/60 hover:text-white flex-shrink-0">
+            <X size={15} />
+          </button>
         </div>
       )}
 
