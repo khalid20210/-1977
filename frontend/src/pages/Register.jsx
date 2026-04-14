@@ -97,9 +97,7 @@ export default function Register() {
         {/* شعار */}
         <div className="flex justify-start">
           <div>
-            <div className="inline-flex rounded-[26px] bg-white/95 px-5 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.16)] ring-1 ring-white/30">
-              <img src="/logo.svg" alt="Jenan BIZ" className="h-16 w-auto object-contain" />
-            </div>
+            <img src="/logo.svg" alt="Jenan BIZ" className="h-20 w-auto object-contain drop-shadow-[0_12px_30px_rgba(0,0,0,0.18)]" />
             <div className="text-blue-200 text-xs mt-3 opacity-70">منصة متكاملة • تحليل وإدارة الاستشارات الإدارية</div>
           </div>
         </div>
