@@ -315,7 +315,7 @@ export default function Layout({ children }) {
     <div className={`flex flex-col h-full ${mobile ? '' : ''}`}>
       {/* الشعار */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-        <img src="/logo.svg" alt="Jenan BIZ" className="h-14 w-auto flex-shrink-0 object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.18)]" />
+        <img src="/logo-dark-bg.svg" alt="Jenan BIZ" className="h-14 w-auto flex-shrink-0 object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.18)]" />
         <div className="mr-1">
           <div className="text-white/70 text-xs">مرحباً،</div>
           <div className="text-white font-semibold text-sm truncate max-w-[130px]">{user?.name}</div>
