@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   LayoutDashboard, FileText, Users, Building2, UserCheck,
-  Settings, LogOut, Menu, X, ChevronLeft, Briefcase, Clock, CalendarDays, TrendingUp, BarChart2, Plus, ClipboardCheck, Award, Bell, Store, CheckCheck, Trash2
+  Settings, LogOut, Menu, X, ChevronLeft, Briefcase, Clock, CalendarDays, TrendingUp, BarChart2, Plus, ClipboardCheck, Award, Bell, Store, CheckCheck, Trash2, MessageCircleMore, RefreshCw, AlertTriangle, CheckCircle2, ArrowUpLeft
 } from 'lucide-react';
 
 const navItems = [
@@ -190,13 +190,18 @@ export default function Layout({ children }) {
     setExpandedNotifId(prev => prev === notif.id ? null : notif.id);
   };
 
-  const notifTypeIcon = (type) => {
+  const notifTypeMeta = (type) => {
     switch(type) {
-      case 'message': return '💬';
-      case 'update':  return '🔄';
-      case 'warning': return '⚠️';
-      case 'success': return '✅';
-      default:        return '🔔';
+      case 'message':
+        return { Icon: MessageCircleMore, iconClass: 'text-sky-600', bgClass: 'bg-sky-100' };
+      case 'update':
+        return { Icon: RefreshCw, iconClass: 'text-indigo-600', bgClass: 'bg-indigo-100' };
+      case 'warning':
+        return { Icon: AlertTriangle, iconClass: 'text-amber-600', bgClass: 'bg-amber-100' };
+      case 'success':
+        return { Icon: CheckCircle2, iconClass: 'text-emerald-600', bgClass: 'bg-emerald-100' };
+      default:
+        return { Icon: Bell, iconClass: 'text-slate-600', bgClass: 'bg-slate-100' };
     }
   };
 
@@ -222,61 +227,82 @@ export default function Layout({ children }) {
           className={panelClassName}
           dir="rtl"
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 rounded-t-2xl" style={{ background: 'linear-gradient(135deg, #0d1b35, #1e3a8a)' }}>
-            <div className="flex items-center gap-2">
-              <Bell size={16} className="text-white" />
-              <span className="text-white font-bold text-sm">التنبيهات</span>
-              {unreadNotif > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">{unreadNotif}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {unreadNotif > 0 && (
-                <button onClick={markAllRead} title="تحديد الكل كمقروء" className="text-blue-200 hover:text-white transition-colors">
-                  <CheckCheck size={16} />
+          <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-slate-200 bg-white shadow-sm" />
+          <div className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur">
+            <div className="border-b border-slate-100 px-5 pb-4 pt-5 text-center">
+              <div className="flex items-center justify-between gap-2">
+                <button onClick={() => setShowNotifPanel(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                  <X size={15} />
                 </button>
-              )}
-              <button onClick={() => setShowNotifPanel(false)} className="text-white/60 hover:text-white"><X size={16} /></button>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xl font-black tracking-tight text-slate-800">التنبيهات</span>
+                  <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-cyan-500 px-2 py-1 text-xs font-black text-white shadow-sm">
+                    {unreadNotif > 99 ? '99+' : unreadNotif}
+                  </span>
+                </div>
+                {unreadNotif > 0 ? (
+                  <button onClick={markAllRead} title="تحديد الكل كمقروء" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-sky-600">
+                    <CheckCheck size={15} />
+                  </button>
+                ) : <span className="h-8 w-8" />}
+              </div>
+              <p className="mt-2 text-xs font-medium text-slate-400">آخر التحديثات والرسائل الخاصة بك</p>
             </div>
-          </div>
 
-          <div className="overflow-y-auto max-h-[24rem]">
-            {notifications.length === 0 ? (
-              <div className="text-center py-10 text-gray-400 bg-white rounded-b-2xl">
-                <Bell size={28} className="mx-auto mb-2 opacity-30" />
-                <p className="text-sm">لا توجد تنبيهات</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-b-2xl overflow-hidden">
-                {notifications.map(n => (
-                  <div
-                    key={n.id}
-                    className={n.is_read ? "flex items-start gap-3 px-4 py-3 border-b last:border-b-0 border-gray-100 transition-colors hover:bg-gray-50" : "flex items-start gap-3 px-4 py-3 border-b last:border-b-0 border-gray-100 bg-blue-50/60 transition-colors hover:bg-blue-100/50"}
-                    onClick={() => openNotification(n)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base bg-gray-100">
-                      {notifTypeIcon(n.type)}
-                    </div>
-                    <div className="flex-1 min-w-0 max-w-full overflow-hidden">
-                      <p className={`text-sm font-semibold break-words whitespace-normal leading-5 ${n.is_read ? 'text-gray-700' : 'text-gray-900'}`}>{n.title}</p>
-                      {n.body && <p className={`text-xs text-gray-400 mt-0.5 break-words whitespace-normal leading-5 overflow-hidden ${expandedNotifId === n.id ? '' : 'line-clamp-2'}`}>{n.body}</p>}
-                      <p className="text-[10px] text-gray-300 mt-1">{new Date(n.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                      <div className="mt-1 flex items-center gap-2 flex-wrap">
-                        {n.link && <span className="text-[11px] font-semibold text-blue-600">عرض التفاصيل</span>}
-                        {!n.link && n.body && <span className="text-[11px] font-semibold text-blue-600">{expandedNotifId === n.id ? 'إخفاء التفاصيل' : 'إظهار التفاصيل'}</span>}
+            <div className="max-h-[26rem] overflow-y-auto bg-slate-50/60">
+              {notifications.length === 0 ? (
+                <div className="bg-white px-6 py-12 text-center text-slate-400">
+                  <Bell size={30} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm font-medium">لا توجد تنبيهات حالياً</p>
+                </div>
+              ) : (
+                <div className="bg-white">
+                  {notifications.map(n => {
+                    const meta = notifTypeMeta(n.type);
+                    const Icon = meta.Icon;
+                    return (
+                      <div
+                        key={n.id}
+                        className={`group flex items-start gap-3 border-b border-slate-100 px-4 py-4 last:border-b-0 transition-colors ${n.is_read ? 'bg-white hover:bg-slate-50' : 'bg-sky-50/55 hover:bg-sky-50'}`}
+                        onClick={() => openNotification(n)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="pt-1">
+                          <span className={`flex h-11 w-11 items-center justify-center rounded-full ${meta.bgClass}`}>
+                            <Icon size={18} className={meta.iconClass} />
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="flex items-start gap-2">
+                            {!n.is_read && <span className="mt-2 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-rose-400" />}
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm font-extrabold leading-6 break-words whitespace-normal ${n.is_read ? 'text-slate-700' : 'text-slate-900'}`}>{n.title}</p>
+                              {n.body && (
+                                <p className={`mt-0.5 text-[13px] leading-6 text-slate-500 break-words whitespace-normal overflow-hidden ${expandedNotifId === n.id ? '' : 'line-clamp-2'}`}>
+                                  {n.body}
+                                </p>
+                              )}
+                              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                <span className="font-medium text-slate-400">{new Date(n.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                {n.link && <span className="inline-flex items-center gap-1 font-bold text-sky-600"><ArrowUpLeft size={12} /> فتح</span>}
+                                {!n.link && n.body && <span className="font-bold text-sky-600">{expandedNotifId === n.id ? 'إخفاء' : 'تفاصيل أكثر'}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteNotif(n.id); }}
+                          className="mt-1 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100"
+                          title="حذف التنبيه"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                      {!n.is_read && <span className="w-2 h-2 rounded-full bg-blue-500" />}
-                      <button onClick={(e) => { e.stopPropagation(); deleteNotif(n.id); }} className="text-gray-300 hover:text-red-400 transition-colors mt-1">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -390,7 +416,7 @@ export default function Layout({ children }) {
               buttonClassName="relative inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition-colors"
               iconSize={16}
               badgeClassName="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center"
-              panelClassName="absolute top-full mt-2 left-0 z-50 w-[min(22rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-gray-100 shadow-2xl"
+              panelClassName="absolute top-full left-1/2 z-50 mt-4 w-[min(22rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] -translate-x-1/2"
             />
             <button
               onClick={handleLogout}
@@ -418,7 +444,7 @@ export default function Layout({ children }) {
                 buttonClassName="relative inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors shadow-sm"
                 iconSize={18}
                 badgeClassName="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm"
-                panelClassName="absolute top-full mt-3 right-0 z-50 w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-gray-100 shadow-2xl"
+                panelClassName="absolute top-full left-1/2 z-50 mt-4 w-[22rem] max-w-[calc(100vw-2rem)] -translate-x-1/2"
               />
               <button
                 onClick={handleLogout}
