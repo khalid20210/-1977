@@ -258,11 +258,11 @@ export default function Layout({ children }) {
                     <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base bg-gray-100">
                       {notifTypeIcon(n.type)}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${n.is_read ? 'text-gray-700' : 'text-gray-900'}`}>{n.title}</p>
-                      {n.body && <p className={`text-xs text-gray-400 mt-0.5 ${expandedNotifId === n.id ? '' : 'line-clamp-2'}`}>{n.body}</p>}
+                    <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+                      <p className={`text-sm font-semibold break-words whitespace-normal leading-5 ${n.is_read ? 'text-gray-700' : 'text-gray-900'}`}>{n.title}</p>
+                      {n.body && <p className={`text-xs text-gray-400 mt-0.5 break-words whitespace-normal leading-5 overflow-hidden ${expandedNotifId === n.id ? '' : 'line-clamp-2'}`}>{n.body}</p>}
                       <p className="text-[10px] text-gray-300 mt-1">{new Date(n.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex items-center gap-2 flex-wrap">
                         {n.link && <span className="text-[11px] font-semibold text-blue-600">عرض التفاصيل</span>}
                         {!n.link && n.body && <span className="text-[11px] font-semibold text-blue-600">{expandedNotifId === n.id ? 'إخفاء التفاصيل' : 'إظهار التفاصيل'}</span>}
                       </div>
