@@ -197,12 +197,18 @@ router.post('/', authMiddleware, async (req, res) => {
     `).run(company_name.trim(), entity_type || 'شركة', owner_name || null, owner_phone || null, reqId, req.user.id);
 
     const request = await db.prepare('SELECT * FROM requests WHERE id = ?').get(reqId);
+    await createNotification(req.user.id, {
+      type: 'success',
+      title: `تم إنشاء طلب ${company_name.trim()}`,
+      body: 'تم استلام طلبك بنجاح وهو الآن بانتظار المراجعة.',
+      link: `/requests?view=${reqId}`,
+    });
     await notifyAdmins({
       type: 'general',
       title: 'طلب جديد بانتظار المراجعة',
       body: `${req.user.name} أضاف طلب ${company_name.trim()}`,
       link: `/requests?view=${reqId}`,
-    }, { excludeUserId: req.user.id });
+    });
     res.status(201).json(request);
   } catch (err) {
     console.error(err);

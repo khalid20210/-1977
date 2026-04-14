@@ -38,6 +38,7 @@ export default function Layout({ children }) {
   const [showNotifPanel, setShowNotifPanel] = React.useState(false);
   const [newNotifToast, setNewNotifToast] = React.useState(null);
   const [expandedNotifId, setExpandedNotifId] = React.useState(null);
+  const [notifPanelStyle, setNotifPanelStyle] = React.useState({ top: 70, right: 16 });
   const notifRef = React.useRef(null);
   const prevUnreadRef = React.useRef(null);
 
@@ -176,6 +177,16 @@ export default function Layout({ children }) {
     } catch (_) {}
   };
 
+  const toggleNotifPanel = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const isMobile = window.innerWidth < 1024;
+    setNotifPanelStyle({
+      top: rect.bottom + 10,
+      right: isMobile ? 16 : Math.max(16, window.innerWidth - rect.right),
+    });
+    setShowNotifPanel(prev => !prev);
+  };
+
   const openNotification = async (notif) => {
     if (!notif.is_read) await markRead(notif.id);
     if (notif.link) {
@@ -303,7 +314,7 @@ export default function Layout({ children }) {
             )}
             <div className="relative">
               <button
-                  onClick={() => setShowNotifPanel(v => !v)}
+                onClick={toggleNotifPanel}
                 className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition-colors"
               >
                 <Bell size={16} />
@@ -327,7 +338,7 @@ export default function Layout({ children }) {
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <div className="hidden lg:flex items-center mb-4">
             <div className="mr-auto flex items-center gap-2" dir="ltr">
-              {canCreateRequest && location.pathname !== '/requests' && (
+              {canCreateRequest && (
                 <button
                   onClick={handleNewRequest}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 shadow-sm"
@@ -338,7 +349,7 @@ export default function Layout({ children }) {
               )}
               <div className="relative">
                 <button
-                  onClick={() => setShowNotifPanel(v => !v)}
+                  onClick={toggleNotifPanel}
                   className="relative inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors shadow-sm"
                   title="التنبيهات"
                 >
@@ -367,8 +378,8 @@ export default function Layout({ children }) {
       {showNotifPanel && (
         <div
           ref={notifRef}
-          className="fixed top-16 left-4 lg:top-16 lg:left-auto lg:right-44 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
-          style={{ maxHeight: '80vh' }}
+          className="fixed z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+          style={{ maxHeight: '80vh', top: notifPanelStyle.top, right: notifPanelStyle.right }}
           dir="rtl"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #0d1b35, #1e3a8a)' }}>
