@@ -150,45 +150,47 @@ function getDocumentStatusMeta(document) {
 function NamedDocumentsUploader({ documents, uploadingDocId, onUpload, getFileUrl, requestMeta }) {
   if (!documents || documents.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-3 py-5 text-center text-xs text-gray-500 sm:px-4 sm:py-6 sm:text-sm">
         لا توجد قائمة مستندات لهذا الطلب حالياً.
       </div>
     );
   }
 
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid gap-2 sm:gap-3 xl:grid-cols-2">
       {documents.map((document) => {
         const statusMeta = getDocumentStatusMeta(document);
         const guidance = getDocumentGuidance(document.document_name, requestMeta);
 
         return (
-          <div key={document.id} className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4">
+          <div key={document.id} className="flex h-full flex-col justify-between rounded-lg border border-gray-200 bg-white p-2 shadow-sm transition-shadow hover:shadow-md sm:rounded-2xl sm:p-4">
             <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[13px] font-bold leading-6 text-gray-900 sm:text-sm">{document.document_name}</p>
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${statusMeta.className}`}>
+                  <p className="text-[11px] font-bold leading-5 text-gray-900 sm:text-sm sm:leading-6">{document.document_name}</p>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold sm:px-2.5 sm:py-1 sm:text-[11px] ${statusMeta.className}`}>
                     {statusMeta.label}
                   </span>
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${getGuidanceClassName(guidance.tone)}`}>
+                  <span className={`hidden rounded-full px-2 py-0.5 text-[10px] font-bold sm:inline-flex sm:px-2.5 sm:py-1 sm:text-[11px] ${getGuidanceClassName(guidance.tone)}`}>
                     {guidance.tone === 'conditional' ? 'شرطي' : 'أساسي'}
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] leading-5 text-gray-600 sm:text-xs">{guidance.text}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500 sm:text-xs">
-                  <span>{document.file_name || 'لم يتم رفع ملف بعد'}</span>
-                  {document.expiry_date && <span>الانتهاء: {document.expiry_date}</span>}
+                <p className="mt-1 hidden text-[11px] leading-5 text-gray-600 sm:block sm:text-xs">{guidance.text}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-gray-500 sm:text-xs">
+                  <span className="block max-w-full truncate">{document.file_name || 'بدون ملف'}</span>
+                  {document.expiry_date && <span className="hidden sm:inline">الانتهاء: {document.expiry_date}</span>}
                   {document.file_path && getFileUrl(document.file_path) && (
-                    <a href={getFileUrl(document.file_path)} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline">
+                    <a href={getFileUrl(document.file_path)} target="_blank" rel="noopener noreferrer" className="hidden font-semibold text-blue-600 hover:underline sm:inline">
                       تحميل الملف الحالي
                     </a>
                   )}
                 </div>
             </div>
 
-            <label className={`mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-2.5 text-[11px] font-semibold transition-colors sm:text-xs ${uploadingDocId === document.id ? 'border-blue-300 bg-blue-50 text-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
-                <Upload size={14} className="flex-shrink-0" />
-                <span>{uploadingDocId === document.id ? 'جارٍ الرفع...' : (document.file_path ? 'استبدال المستند' : 'رفع المستند')}</span>
+            <label className={`mt-2 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-2.5 py-1.5 text-[10px] font-semibold transition-colors sm:mt-3 sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-xs ${uploadingDocId === document.id ? 'border-blue-300 bg-blue-50 text-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+              <Upload size={13} className="flex-shrink-0 sm:hidden" />
+              <Upload size={14} className="hidden flex-shrink-0 sm:block" />
+                <span className="sm:hidden">{uploadingDocId === document.id ? 'جارٍ الرفع...' : (document.file_path ? 'استبدال' : 'رفع')}</span>
+                <span className="hidden sm:inline">{uploadingDocId === document.id ? 'جارٍ الرفع...' : (document.file_path ? 'استبدال المستند' : 'رفع المستند')}</span>
                 <input
                   type="file"
                   accept={DOC_UPLOAD_ACCEPT}
@@ -205,6 +207,40 @@ function NamedDocumentsUploader({ documents, uploadingDocId, onUpload, getFileUr
         );
       })}
     </div>
+  );
+}
+
+function UploadSupportCard({ title, description, files, onChange, accept, emptyLabel, accentClass = 'text-purple-600', compact = false }) {
+  return (
+    <div className={`border border-gray-200 bg-white ${compact ? 'rounded-lg p-2.5' : 'rounded-xl p-3 sm:rounded-2xl sm:p-4'}`}>
+      <h3 className={`font-bold text-gray-800 flex items-center gap-2 ${compact ? 'mb-2 text-[12px]' : 'mb-3 text-sm'}`}>
+        <Upload size={compact ? 14 : 15} className={accentClass} /> {title}
+      </h3>
+      <p className={`${compact ? 'mb-2 text-[10px] leading-4' : 'mb-2.5 text-[11px] sm:mb-3 sm:text-xs'} text-gray-500`}>{description}</p>
+      <label className={`flex flex-col items-center justify-center w-full border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 transition-colors ${compact ? 'h-16 rounded-lg' : 'h-20 rounded-lg sm:h-24 sm:rounded-xl'}`}>
+        <Upload size={compact ? 16 : 18} className="mb-1 text-gray-400 sm:size-5" />
+        <span className={`${compact ? 'text-[10px]' : 'text-[11px] sm:text-xs'} text-gray-500`}>{files.length > 0 ? `${files.length} ملف محدد` : emptyLabel}</span>
+        <input type="file" accept={accept} multiple className="hidden" onChange={e => onChange(Array.from(e.target.files || []))} />
+      </label>
+      {files.length > 0 && <p className={`${compact ? 'mt-1 text-[10px]' : 'mt-1.5 text-[11px] sm:text-xs'} font-medium text-green-600`}>✓ {files.length} ملف</p>}
+    </div>
+  );
+}
+
+function MobileUploadAccordion({ title, countLabel, children }) {
+  return (
+    <details className="rounded-lg border border-gray-200 bg-white" open={countLabel !== '0 ملف'}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-[12px] font-bold text-gray-800 [&::-webkit-details-marker]:hidden">
+        <span>{title}</span>
+        <span className="flex items-center gap-2">
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">{countLabel}</span>
+          <ChevronDown size={14} className="text-gray-400" />
+        </span>
+      </summary>
+      <div className="border-t border-gray-100 p-2.5">
+        {children}
+      </div>
+    </details>
   );
 }
 
@@ -827,7 +863,7 @@ export default function Requests() {
       {/* New Request Modal */}
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto" dir="rtl">
-          <div className={`bg-white rounded-2xl shadow-2xl w-full mx-3 my-4 sm:mx-4 sm:my-8 ${newStep === 1 ? 'max-w-2xl p-4 sm:p-6' : 'max-w-5xl p-3 sm:p-4 lg:p-5'}`}>
+          <div className={`bg-white rounded-2xl shadow-2xl w-full mx-3 my-4 sm:mx-4 sm:my-8 ${newStep === 1 ? 'max-w-2xl p-4 sm:p-6' : 'max-w-2xl overflow-hidden xl:max-w-5xl'}`}>
             {newStep === 1 ? (
               <>
                 <div className="flex items-center justify-between mb-5">
@@ -891,17 +927,18 @@ export default function Requests() {
               </>
             ) : (
               <>
-                <div className="rounded-3xl border border-blue-100 bg-gradient-to-l from-slate-50 via-white to-blue-50 p-4 sm:p-5">
+                <div className="border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4 xl:border-b-0 xl:px-0 xl:py-0">
+                  <div className="rounded-2xl border border-blue-100 bg-gradient-to-l from-slate-50 via-white to-blue-50 p-3 sm:rounded-3xl sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-700">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-700 sm:px-3 sm:text-[11px]">
                         الخطوة 2 من 2
                       </div>
-                      <h2 className="mt-3 text-lg font-black text-gray-900 sm:text-xl">رفع المستندات والمرفقات</h2>
-                      <p className="mt-1 text-xs leading-6 text-gray-500 sm:text-sm">ارفع المستندات الأساسية ثم الكشوفات والقوائم، وبعدها احفظ المرفقات من نفس النافذة.</p>
+                      <h2 className="mt-2 text-base font-black text-gray-900 sm:mt-3 sm:text-xl">رفع المستندات والمرفقات</h2>
+                      <p className="mt-1 text-[11px] leading-5 text-gray-500 sm:text-sm sm:leading-6">ارفع المستندات الأساسية ثم الكشوفات والقوائم، وبعدها احفظ المرفقات من نفس النافذة.</p>
                     </div>
                     <div className="flex items-center gap-3 self-start">
-                      <div className="min-w-[132px] rounded-2xl bg-white/90 px-3 py-2.5 shadow-sm ring-1 ring-blue-100 sm:min-w-[180px] sm:px-4 sm:py-3">
+                      <div className="min-w-[116px] rounded-xl bg-white/90 px-2.5 py-2 shadow-sm ring-1 ring-blue-100 sm:min-w-[180px] sm:rounded-2xl sm:px-4 sm:py-3">
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>اكتمال المستندات</span>
                           <span className="font-bold text-blue-700">{uploadedNewRequestDocuments}/{newRequestDocuments.length || 0}</span>
@@ -914,80 +951,82 @@ export default function Requests() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
-                  <div className="order-2 space-y-3 lg:order-1 lg:max-h-[68vh] lg:overflow-y-auto lg:pr-1">
-                    <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4">
+                </div>
+                <div className="max-h-[75vh] overflow-y-auto px-4 py-3 sm:px-6 sm:py-4 xl:max-h-[82vh] xl:px-0 xl:py-0">
+                <div className="grid gap-3 sm:gap-4 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
+                  <div className="order-2 hidden space-y-3 xl:order-1 xl:block xl:max-h-[68vh] xl:overflow-y-auto xl:pr-1">
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 sm:rounded-3xl sm:p-4">
                       <h3 className="font-bold text-emerald-900 text-sm">ترتيب الرفع</h3>
-                      <div className="mt-3 space-y-2 text-xs text-emerald-900/80">
-                        <div className="rounded-2xl bg-white/80 px-3 py-2">1. ارفع المستندات الأساسية من القائمة المقابلة.</div>
-                        <div className="rounded-2xl bg-white/80 px-3 py-2">2. أضف كشوف الحساب PDF وExcel لآخر 12 شهر.</div>
-                        <div className="rounded-2xl bg-white/80 px-3 py-2">3. أرفق القوائم المالية ثم احفظ المرفقات.</div>
+                      <div className="mt-2.5 space-y-2 text-[11px] text-emerald-900/80 sm:mt-3 sm:text-xs">
+                        <div className="rounded-xl bg-white/80 px-3 py-2 sm:rounded-2xl">1. ارفع المستندات الأساسية من القائمة المقابلة.</div>
+                        <div className="rounded-xl bg-white/80 px-3 py-2 sm:rounded-2xl">2. أضف كشوف الحساب PDF وExcel لآخر 12 شهر.</div>
+                        <div className="rounded-xl bg-white/80 px-3 py-2 sm:rounded-2xl">3. أرفق القوائم المالية ثم احفظ المرفقات.</div>
                       </div>
                     </div>
-                    <div className="border border-gray-200 rounded-2xl p-4 bg-white">
+                    <div className="border border-gray-200 rounded-xl p-3 bg-white sm:rounded-2xl sm:p-4">
                       <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
                         <Upload size={15} className="text-purple-600" /> كشوف الحساب PDF
                       </h3>
-                      <p className="text-xs text-gray-500 mb-3">آخر 12 شهر بصيغة PDF أو صورة واضحة.</p>
-                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                        <Upload size={20} className="text-gray-400 mb-1" />
-                        <span className="text-xs text-gray-500">{uploadBankFiles.length > 0 ? `${uploadBankFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
+                      <p className="mb-2.5 text-[11px] text-gray-500 sm:mb-3 sm:text-xs">آخر 12 شهر بصيغة PDF أو صورة واضحة.</p>
+                      <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors sm:h-24 sm:rounded-xl">
+                        <Upload size={18} className="text-gray-400 mb-1 sm:size-5" />
+                        <span className="text-[11px] text-gray-500 sm:text-xs">{uploadBankFiles.length > 0 ? `${uploadBankFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
                         <input type="file" accept={DOC_UPLOAD_ACCEPT} multiple className="hidden" onChange={e => setUploadBankFiles(Array.from(e.target.files || []))} />
                       </label>
-                      {uploadBankFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadBankFiles.length} ملف</p>}
+                      {uploadBankFiles.length > 0 && <p className="mt-1.5 text-[11px] font-medium text-green-600 sm:text-xs">✓ {uploadBankFiles.length} ملف</p>}
                     </div>
-                    <div className="border border-gray-200 rounded-2xl p-4 bg-white">
+                    <div className="border border-gray-200 rounded-xl p-3 bg-white sm:rounded-2xl sm:p-4">
                       <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
                         <Upload size={15} className="text-indigo-600" /> كشوف الحساب Excel
                       </h3>
-                      <p className="text-xs text-gray-500 mb-3">ارفع ملف Excel أو XLS لآخر 12 شهر.</p>
-                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                        <Upload size={20} className="text-gray-400 mb-1" />
-                        <span className="text-xs text-gray-500">{uploadAccountFiles.length > 0 ? `${uploadAccountFiles.length} ملف محدد` : 'اضغط لاختيار ملفات Excel'}</span>
+                      <p className="mb-2.5 text-[11px] text-gray-500 sm:mb-3 sm:text-xs">ارفع ملف Excel أو XLS لآخر 12 شهر.</p>
+                      <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors sm:h-24 sm:rounded-xl">
+                        <Upload size={18} className="text-gray-400 mb-1 sm:size-5" />
+                        <span className="text-[11px] text-gray-500 sm:text-xs">{uploadAccountFiles.length > 0 ? `${uploadAccountFiles.length} ملف محدد` : 'اضغط لاختيار ملفات Excel'}</span>
                         <input type="file" accept={ACCOUNT_STATEMENT_ACCEPT} multiple className="hidden" onChange={e => setUploadAccountFiles(Array.from(e.target.files || []))} />
                       </label>
-                      {uploadAccountFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadAccountFiles.length} ملف</p>}
+                      {uploadAccountFiles.length > 0 && <p className="mt-1.5 text-[11px] font-medium text-green-600 sm:text-xs">✓ {uploadAccountFiles.length} ملف</p>}
                     </div>
-                    <div className="border border-gray-200 rounded-2xl p-4 bg-white">
+                    <div className="border border-gray-200 rounded-xl p-3 bg-white sm:rounded-2xl sm:p-4">
                       <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
                         <Upload size={15} className="text-emerald-600" /> قوائم مالية وإقرارات
                       </h3>
-                      <p className="text-xs text-gray-500 mb-3">تشمل القوائم المالية والإقرارات الضريبية: آخر 6 فترات ربعية أو آخر 15 فترة شهرية حسب نوع الإقرار.</p>
-                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                        <Upload size={20} className="text-gray-400 mb-1" />
-                        <span className="text-xs text-gray-500">{uploadTaxFiles.length > 0 ? `${uploadTaxFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
+                      <p className="mb-2.5 text-[11px] leading-5 text-gray-500 sm:mb-3 sm:text-xs">تشمل القوائم المالية والإقرارات الضريبية: آخر 6 فترات ربعية أو آخر 15 فترة شهرية حسب نوع الإقرار.</p>
+                      <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors sm:h-24 sm:rounded-xl">
+                        <Upload size={18} className="text-gray-400 mb-1 sm:size-5" />
+                        <span className="text-[11px] text-gray-500 sm:text-xs">{uploadTaxFiles.length > 0 ? `${uploadTaxFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
                         <input type="file" accept={DOC_UPLOAD_ACCEPT} multiple className="hidden" onChange={e => setUploadTaxFiles(Array.from(e.target.files || []))} />
                       </label>
-                      {uploadTaxFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadTaxFiles.length} ملف</p>}
+                      {uploadTaxFiles.length > 0 && <p className="mt-1.5 text-[11px] font-medium text-green-600 sm:text-xs">✓ {uploadTaxFiles.length} ملف</p>}
                     </div>
-                    <div className="rounded-3xl border border-gray-200 bg-slate-50 p-4 lg:sticky lg:bottom-0">
-                      <div className="flex items-start gap-2 text-xs text-gray-500">
+                    <div className="rounded-2xl border border-gray-200 bg-slate-50 p-3 sm:rounded-3xl sm:p-4 xl:sticky xl:bottom-0">
+                      <div className="flex items-start gap-2 text-[11px] text-gray-500 sm:text-xs">
                         <AlertTriangle size={14} className="mt-0.5 text-amber-500" />
                         <p>يمكنك حفظ المرفقات الآن واستكمال أي مستند لاحقًا من شاشة الطلب نفسها دون الرجوع لبداية الخطوات.</p>
                       </div>
                       <button
                         onClick={submitWithFiles}
                         disabled={uploadingNew}
-                        className="mt-4 w-full px-12 py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+                        className="mt-3 w-full px-6 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 sm:mt-4 sm:px-12 sm:py-3"
                         style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
                       >
                         <Send size={16} />{uploadingNew ? 'جارٍ الحفظ...' : 'حفظ المرفقات'}
                       </button>
                     </div>
                   </div>
-                  <div className="order-1 min-w-0 rounded-3xl border border-gray-200 bg-slate-50/80 p-3 sm:p-4 lg:order-2">
+                  <div className="order-1 min-w-0 rounded-2xl border border-gray-200 bg-slate-50/80 p-2.5 sm:rounded-3xl sm:p-4 xl:order-2">
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <div>
                         <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
                           <Upload size={15} className="text-blue-600" /> المستندات الأساسية
                         </h3>
-                        <p className="mt-1 text-[11px] leading-5 text-gray-500 sm:text-xs">كل مستند في بطاقة صغيرة مستقلة، والرفع أو الاستبدال يتم من نفس البطاقة.</p>
+                        <p className="mt-1 hidden text-[11px] leading-5 text-gray-500 sm:block sm:text-xs">كل مستند في بطاقة صغيرة مستقلة، والرفع أو الاستبدال يتم من نفس البطاقة.</p>
                       </div>
-                      <span className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-700">
+                      <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-700 sm:px-3 sm:text-[11px]">
                         {uploadedNewRequestDocuments} / {newRequestDocuments.length}
                       </span>
                     </div>
-                    <div className="max-h-[46vh] overflow-y-auto pr-1 sm:max-h-[52vh] lg:max-h-[68vh]">
+                    <div className="max-h-none overflow-visible pr-0 sm:max-h-[52vh] sm:overflow-y-auto sm:pr-1 xl:max-h-[68vh]">
                       <NamedDocumentsUploader
                         documents={newRequestDocuments}
                         uploadingDocId={uploadingDocId}
@@ -1005,6 +1044,71 @@ export default function Requests() {
                       />
                     </div>
                   </div>
+                  <div className="order-2 space-y-2.5 xl:hidden">
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                      <h3 className="font-bold text-emerald-900 text-[12px]">ترتيب الرفع</h3>
+                      <div className="mt-2 space-y-1.5 text-[10px] text-emerald-900/80">
+                        <div className="rounded-lg bg-white/80 px-2.5 py-2">1. ارفع المستندات الأساسية.</div>
+                        <div className="rounded-lg bg-white/80 px-2.5 py-2">2. أضف كشوف PDF وExcel.</div>
+                        <div className="rounded-lg bg-white/80 px-2.5 py-2">3. أرفق القوائم ثم احفظ.</div>
+                      </div>
+                    </div>
+
+                    <MobileUploadAccordion title="كشوف الحساب PDF" countLabel={`${uploadBankFiles.length} ملف`}>
+                      <UploadSupportCard
+                        title="كشوف الحساب PDF"
+                        description="آخر 12 شهر بصيغة PDF أو صورة واضحة."
+                        files={uploadBankFiles}
+                        onChange={setUploadBankFiles}
+                        accept={DOC_UPLOAD_ACCEPT}
+                        emptyLabel="اضغط لاختيار ملفات متعددة"
+                        accentClass="text-purple-600"
+                        compact
+                      />
+                    </MobileUploadAccordion>
+
+                    <MobileUploadAccordion title="كشوف الحساب Excel" countLabel={`${uploadAccountFiles.length} ملف`}>
+                      <UploadSupportCard
+                        title="كشوف الحساب Excel"
+                        description="ارفع ملف Excel أو XLS لآخر 12 شهر."
+                        files={uploadAccountFiles}
+                        onChange={setUploadAccountFiles}
+                        accept={ACCOUNT_STATEMENT_ACCEPT}
+                        emptyLabel="اضغط لاختيار ملفات Excel"
+                        accentClass="text-indigo-600"
+                        compact
+                      />
+                    </MobileUploadAccordion>
+
+                    <MobileUploadAccordion title="قوائم مالية وإقرارات" countLabel={`${uploadTaxFiles.length} ملف`}>
+                      <UploadSupportCard
+                        title="قوائم مالية وإقرارات"
+                        description="آخر 6 فترات ربعية أو 15 فترة شهرية حسب نوع الإقرار."
+                        files={uploadTaxFiles}
+                        onChange={setUploadTaxFiles}
+                        accept={DOC_UPLOAD_ACCEPT}
+                        emptyLabel="اضغط لاختيار ملفات متعددة"
+                        accentClass="text-emerald-600"
+                        compact
+                      />
+                    </MobileUploadAccordion>
+
+                    <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
+                      <div className="flex items-start gap-2 text-[10px] text-gray-500">
+                        <AlertTriangle size={13} className="mt-0.5 text-amber-500" />
+                        <p>يمكنك حفظ المرفقات الآن واستكمال الباقي لاحقًا من نفس الطلب.</p>
+                      </div>
+                      <button
+                        onClick={submitWithFiles}
+                        disabled={uploadingNew}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
+                        style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
+                      >
+                        <Send size={16} />{uploadingNew ? 'جارٍ الحفظ...' : 'حفظ المرفقات'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
                 </div>
               </>
             )}
