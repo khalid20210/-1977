@@ -1415,22 +1415,7 @@ export default function Requests() {
                       ))}
                     </div>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
-                    <ProductDetailsFields form={newForm} setForm={setNewForm} />
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-center gap-2 text-slate-800">
-                        {newForm.funding_type === 'تمويل شخصي' ? <User size={16} /> : newForm.funding_type === 'كاش' ? <Wallet size={16} /> : newForm.funding_type === 'إقرارات ضريبية' ? <FileText size={16} /> : ['عقار', 'رهن'].includes(newForm.funding_type) ? <Home size={16} /> : <Building2 size={16} />}
-                        <h3 className="text-sm font-bold">ملخص المسار</h3>
-                      </div>
-                      <p className="mt-2 text-xs leading-6 text-slate-600">هذا النموذج يغير الحقول والمرفقات المطلوبة تلقائياً حسب نوع التمويل، لذلك لن تظهر لك ملفات أو أسئلة لا تخص المنتج المختار.</p>
-                      <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
-                        <span className="font-bold">المنتج الحالي:</span> {newForm.funding_type}
-                      </div>
-                      <div className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
-                        <span className="font-bold">نوع الإدخال:</span> {isBusinessRequestForm(newForm) ? 'منشأة / نشاط' : 'فرد / موظف'}
-                      </div>
-                    </div>
-                  </div>
+                  <ProductDetailsFields form={newForm} setForm={setNewForm} />
                   {isAdmin && partners.length > 0 && (
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">الموظف / الشريك</label>
@@ -1911,22 +1896,7 @@ export default function Requests() {
                   ))}
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
-                <ProductDetailsFields form={editForm} setForm={setEditForm} />
-                <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4">
-                  <div className="flex items-center gap-2 text-amber-900">
-                    {editForm.funding_type === 'تمويل شخصي' ? <User size={16} /> : editForm.funding_type === 'كاش' ? <Wallet size={16} /> : editForm.funding_type === 'إقرارات ضريبية' ? <FileText size={16} /> : ['عقار', 'رهن'].includes(editForm.funding_type) ? <Home size={16} /> : <Building2 size={16} />}
-                    <h3 className="text-sm font-bold">ملخص التعديل</h3>
-                  </div>
-                  <p className="mt-2 text-xs leading-6 text-amber-800/80">أنت تعدل نفس مسار الطلب الديناميكي، لذلك سيتغير الاسم الأساسي والحقول المطلوبة تلقائياً عند تغيير المنتج.</p>
-                  <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
-                    <span className="font-bold">المنتج الحالي:</span> {editForm.funding_type}
-                  </div>
-                  <div className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
-                    <span className="font-bold">نوع الإدخال:</span> {isBusinessRequestForm(editForm) ? 'منشأة / نشاط' : 'فرد / موظف'}
-                  </div>
-                </div>
-              </div>
+              <ProductDetailsFields form={editForm} setForm={setEditForm} />
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={submittingEdit} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60" style={{ background: 'linear-gradient(90deg, #92400e, #d97706)' }}>
                   {submittingEdit ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}
