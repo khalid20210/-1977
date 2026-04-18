@@ -188,6 +188,12 @@ export default function Login() {
               <label htmlFor="remember" className="text-sm text-gray-600 cursor-pointer select-none">تذكرني</label>
             </div>
 
+            <div className="text-left -mt-2">
+              <Link to="/forgot-password" className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline">
+                نسيت كلمة المرور؟
+              </Link>
+            </div>
+
             {/* زر الدخول */}
             <button
               type="submit"

@@ -1,6 +1,8 @@
 const { Pool, types } = require('pg');
 const bcrypt = require('bcryptjs');
 
+const PASSWORD_RESET_CODE_TTL_MINUTES = 10;
+
 // Parse PostgreSQL BIGINT (COUNT(*) returns bigint) as JavaScript integer
 types.setTypeParser(20, parseInt);
 
@@ -337,6 +339,18 @@ async function initDatabase() {
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
   )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS password_reset_codes (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    code_hash TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+
+  await pool.query(`DELETE FROM password_reset_codes WHERE used_at IS NOT NULL OR expires_at < NOW() - INTERVAL '${PASSWORD_RESET_CODE_TTL_MINUTES} minutes'`);
 
   // ===== Seed default settings =====
   const defaultSettings = [

@@ -1,12 +1,52 @@
 ﻿const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const db = require('../database');
 const { authMiddleware } = require('../middleware/authMiddleware');
 const { notifyAdmins } = require('../services/notificationService');
+const { ensureEmailConfig, sendPasswordResetCodeEmail } = require('../services/emailService');
 
 const router = express.Router();
 const jwtSecret = process.env.JWT_SECRET;
+const PASSWORD_RESET_CODE_TTL_MINUTES = 10;
+const PASSWORD_RESET_MAX_ATTEMPTS = 5;
+
+function normalizeEmail(value = '') {
+  return String(value || '').trim().toLowerCase();
+}
+
+function normalizePhone(value = '') {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function hashResetCode(code = '') {
+  return crypto.createHash('sha256').update(String(code)).digest('hex');
+}
+
+function generateResetCode() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+async function findUserForPasswordReset(email, phone) {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPhone = normalizePhone(phone);
+
+  if (!normalizedEmail || !normalizedPhone || normalizedPhone.length < 9) {
+    return { error: 'بيانات التحقق غير صحيحة' };
+  }
+
+  const user = await db.prepare('SELECT id, email, phone, status FROM users WHERE email = ?').get(normalizedEmail);
+  if (!user) return { error: 'تعذر التحقق من بيانات الحساب' };
+  if (user.status === 'blocked') return { error: 'الحساب محظور. تواصل مع الإدارة.' };
+
+  const storedPhone = normalizePhone(user.phone);
+  if (!storedPhone || storedPhone !== normalizedPhone) {
+    return { error: 'تعذر التحقق من بيانات الحساب' };
+  }
+
+  return { user, normalizedEmail, normalizedPhone };
+}
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -18,14 +58,14 @@ router.post('/register', async (req, res) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) return res.status(400).json({ error: 'البريد الإلكتروني غير صحيح' });
 
-    const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase().trim());
+    const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(normalizeEmail(email));
     if (existing) return res.status(409).json({ error: 'البريد الإلكتروني مستخدم بالفعل' });
 
     const hashed = await bcrypt.hash(password, 12);
     const result = await db.prepare(`
       INSERT INTO users (name, email, password, role, partner_type, phone, status)
       VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    `).run(name.trim(), email.toLowerCase().trim(), hashed, role, partner_type || null, phone || null);
+    `).run(name.trim(), normalizeEmail(email), hashed, role, partner_type || null, phone || null);
 
     await notifyAdmins({
       type: 'general',
@@ -48,7 +88,7 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'البريد وكلمة المرور مطلوبان' });
 
-    const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
+    const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(normalizeEmail(email));
     if (!user) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
 
     const valid = await bcrypt.compare(password, user.password);
@@ -71,6 +111,103 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'خطأ في الخادم' });
+  }
+});
+
+// POST /api/auth/forgot-password/request-code
+router.post('/forgot-password/request-code', async (req, res) => {
+  try {
+    ensureEmailConfig();
+    const { email, phone } = req.body;
+    const result = await findUserForPasswordReset(email, phone);
+    if (result.error) {
+      return res.status(result.error.includes('محظور') ? 403 : 400).json({ error: result.error });
+    }
+
+    const { user, normalizedEmail } = result;
+    const code = generateResetCode();
+    const codeHash = hashResetCode(code);
+
+    await db.prepare('DELETE FROM password_reset_codes WHERE user_id = ? AND used_at IS NULL').run(user.id);
+    await db.prepare(`
+      INSERT INTO password_reset_codes (user_id, code_hash, expires_at, attempts)
+      VALUES (?, ?, NOW() + INTERVAL '${PASSWORD_RESET_CODE_TTL_MINUTES} minutes', 0)
+    `).run(user.id, codeHash);
+
+    await sendPasswordResetCodeEmail({
+      to: normalizedEmail,
+      code,
+      expiryMinutes: PASSWORD_RESET_CODE_TTL_MINUTES,
+    });
+
+    return res.json({ message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني.' });
+  } catch (err) {
+    console.error('Forgot password request-code error:', err);
+    if (err.code === 'SMTP_NOT_CONFIGURED') {
+      return res.status(503).json({ error: 'خدمة البريد غير مهيأة حالياً. أكمل إعدادات SMTP أولاً.' });
+    }
+    return res.status(500).json({ error: 'خطأ في الخادم، حاول مجدداً' });
+  }
+});
+
+// POST /api/auth/forgot-password/verify-code
+router.post('/forgot-password/verify-code', async (req, res) => {
+  try {
+    const { email, phone, code, password } = req.body;
+    if (!email || !phone || !code || !password) {
+      return res.status(400).json({ error: 'البريد والجوال والرمز وكلمة المرور الجديدة مطلوبة' });
+    }
+
+    if (!/^\d{4}$/.test(String(code).trim())) {
+      return res.status(400).json({ error: 'رمز التحقق يجب أن يكون 4 أرقام' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
+    }
+
+    const result = await findUserForPasswordReset(email, phone);
+    if (result.error) {
+      return res.status(result.error.includes('محظور') ? 403 : 400).json({ error: result.error });
+    }
+
+    const { user } = result;
+    const resetRecord = await db.prepare(`
+      SELECT * FROM password_reset_codes
+      WHERE user_id = ? AND used_at IS NULL AND expires_at > NOW()
+      ORDER BY created_at DESC
+      LIMIT 1
+    `).get(user.id);
+
+    if (!resetRecord) {
+      return res.status(400).json({ error: 'الرمز غير موجود أو انتهت صلاحيته. اطلب رمزاً جديداً.' });
+    }
+
+    if (Number(resetRecord.attempts || 0) >= PASSWORD_RESET_MAX_ATTEMPTS) {
+      await db.prepare('UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?').run(resetRecord.id);
+      return res.status(400).json({ error: 'تم تجاوز عدد المحاولات المسموح. اطلب رمزاً جديداً.' });
+    }
+
+    const submittedCodeHash = hashResetCode(String(code).trim());
+    if (submittedCodeHash !== resetRecord.code_hash) {
+      const nextAttempts = Number(resetRecord.attempts || 0) + 1;
+      if (nextAttempts >= PASSWORD_RESET_MAX_ATTEMPTS) {
+        await db.prepare('UPDATE password_reset_codes SET attempts = ?, used_at = NOW() WHERE id = ?').run(nextAttempts, resetRecord.id);
+        return res.status(400).json({ error: 'الرمز غير صحيح وتم إيقافه بعد تكرار المحاولات. اطلب رمزاً جديداً.' });
+      }
+
+      await db.prepare('UPDATE password_reset_codes SET attempts = ? WHERE id = ?').run(nextAttempts, resetRecord.id);
+      return res.status(400).json({ error: `الرمز غير صحيح. تبقى ${PASSWORD_RESET_MAX_ATTEMPTS - nextAttempts} محاولات.` });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, user.id);
+    await db.prepare('UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?').run(resetRecord.id);
+
+    return res.json({ message: 'تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.' });
+  } catch (err) {
+    console.error('Forgot password verify-code error:', err);
+    return res.status(500).json({ error: 'خطأ في الخادم، حاول مجدداً' });
   }
 });
 

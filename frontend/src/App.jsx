@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Requests from './pages/Requests';
 import Users from './pages/Users';
@@ -77,6 +78,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={token ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/register" element={token ? <Navigate to="/dashboard" replace /> : <Register />} />
+      <Route path="/forgot-password" element={token ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} />
 
       <Route path="/dashboard" element={
         <PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>
