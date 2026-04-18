@@ -9,6 +9,7 @@ const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية
 const ENTITY_TYPES  = ['مؤسسة', 'شركة شخص واحد', 'شركة متعددة الشركاء'];
 const OWNERSHIP_TYPES = ['سعودي', 'مختلط', 'مستثمر'];
 const FINANCIAL_STATEMENT_OPTIONS = ['لا', 'نعم'];
+const TAX_RETURN_PERIOD_OPTIONS = ['ربعية', 'شهرية'];
 
 const SAR = n => `${Number(n).toLocaleString('ar-SA', { maximumFractionDigits: 0 })} ر.س`;
 
@@ -87,6 +88,8 @@ export default function Eligibility() {
     recordAgeMonths:'24',
     hasFinancialStatements: 'لا',
     profitRatio: '',
+    taxReturnPeriod: 'ربعية',
+    hasRequiredTaxReturns: 'لا',
   });
 
   const [result,  setResult]  = useState(null);
@@ -96,17 +99,21 @@ export default function Eligibility() {
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
   const isPosFunding = form.fundingType === 'نقاط بيع';
   const isCashFunding = form.fundingType === 'كاش';
+  const isTaxFunding = form.fundingType === 'إقرارات ضريبية';
+  const requiredTaxReturnsCount = form.taxReturnPeriod === 'ربعية' ? 6 : 15;
 
   const handleFundingTypeChange = (e) => {
     const nextFundingType = e.target.value;
     setForm((current) => ({
       ...current,
       fundingType: nextFundingType,
-      totalPos: nextFundingType === 'نقاط بيع' ? current.totalPos : '',
-      totalDeposit: nextFundingType === 'كاش' ? current.totalDeposit : current.totalDeposit,
-      totalTransfer: nextFundingType === 'نقاط بيع' || nextFundingType === 'كاش' ? '' : current.totalTransfer,
+      totalPos: nextFundingType === 'نقاط بيع' || nextFundingType === 'إقرارات ضريبية' ? current.totalPos : '',
+      totalDeposit: nextFundingType === 'كاش' || nextFundingType === 'إقرارات ضريبية' ? current.totalDeposit : current.totalDeposit,
+      totalTransfer: nextFundingType === 'نقاط بيع' || nextFundingType === 'كاش' || nextFundingType === 'إقرارات ضريبية' ? '' : current.totalTransfer,
       hasFinancialStatements: nextFundingType === 'كاش' ? current.hasFinancialStatements : 'لا',
       profitRatio: nextFundingType === 'كاش' && current.hasFinancialStatements === 'نعم' ? current.profitRatio : '',
+      taxReturnPeriod: nextFundingType === 'إقرارات ضريبية' ? current.taxReturnPeriod : 'ربعية',
+      hasRequiredTaxReturns: nextFundingType === 'إقرارات ضريبية' ? current.hasRequiredTaxReturns : 'لا',
     }));
   };
 
@@ -119,6 +126,15 @@ export default function Eligibility() {
     }));
   };
 
+  const handleTaxReturnPeriodChange = (e) => {
+    const nextValue = e.target.value;
+    setForm((current) => ({
+      ...current,
+      taxReturnPeriod: nextValue,
+      hasRequiredTaxReturns: 'لا',
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -128,9 +144,9 @@ export default function Eligibility() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          totalPos:        isPosFunding ? (Number(form.totalPos) || 0) : 0,
-          totalDeposit:    isCashFunding ? (Number(form.totalDeposit) || 0) : (Number(form.totalDeposit) || 0),
-          totalTransfer:   isPosFunding || isCashFunding ? 0 : (Number(form.totalTransfer) || 0),
+          totalPos:        isPosFunding || isTaxFunding ? (Number(form.totalPos) || 0) : 0,
+          totalDeposit:    isCashFunding || isTaxFunding ? (Number(form.totalDeposit) || 0) : (Number(form.totalDeposit) || 0),
+          totalTransfer:   isPosFunding || isCashFunding || isTaxFunding ? 0 : (Number(form.totalTransfer) || 0),
           months:          12,
           fundingType:     form.fundingType,
           bankName:        form.bankName,
@@ -149,7 +165,21 @@ export default function Eligibility() {
     setLoading(false);
   };
 
-  const eligible = checked && result?.entities?.length > 0;
+  const cashEligibleAlternative = checked && result?.entities?.length > 0;
+  const declarationEligible = checked && isTaxFunding && form.hasRequiredTaxReturns === 'نعم';
+  const eligible = isTaxFunding ? declarationEligible : cashEligibleAlternative;
+  const statusTitle = isTaxFunding
+    ? (declarationEligible ? 'أنت مؤهل لتمويل الإقرارات' : 'أنت غير مؤهل لتمويل الإقرارات حالياً')
+    : (eligible ? 'المنشأة مؤهلة للتمويل' : 'المنشأة غير مؤهلة حالياً');
+  const statusSubtitle = isTaxFunding
+    ? (declarationEligible
+        ? `تم تأكيد توفر آخر ${requiredTaxReturnsCount} إقرارات ${form.taxReturnPeriod === 'ربعية' ? 'ضريبية ربعية' : 'ضريبية شهرية'}.`
+        : (cashEligibleAlternative
+            ? `لكن أنت مؤهل لتمويل كاش لأن إجمالي إيداعاتك لآخر 12 شهر هو ${SAR(Number(form.totalDeposit) || 0)}.`
+            : `يشترط توفر آخر ${requiredTaxReturnsCount} إقرارات ${form.taxReturnPeriod === 'ربعية' ? 'ضريبية ربعية' : 'ضريبية شهرية'} لهذه الحالة.`))
+    : (eligible
+        ? `وجدنا ${result.entities.length} جهة أو مسار تمويلي مناسب`
+        : 'لا تستوفي المنشأة شروط التمويل المتاحة حالياً');
 
   return (
     <div className="space-y-6">
@@ -226,7 +256,28 @@ export default function Eligibility() {
               </>
             )}
 
-            {!isPosFunding && !isCashFunding && (
+            {isTaxFunding && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="إجمالي نقاط البيع لآخر 12 شهر (ر.س)">
+                    <NumberInput value={form.totalPos} onChange={set('totalPos')} placeholder="مثال: 1500000" />
+                  </Field>
+                  <Field label="إجمالي الإيداعات لآخر 12 شهر (ر.س)">
+                    <NumberInput value={form.totalDeposit} onChange={set('totalDeposit')} placeholder="مثال: 3000000" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="نوع الإقرارات">
+                    <Select value={form.taxReturnPeriod} onChange={handleTaxReturnPeriodChange} options={TAX_RETURN_PERIOD_OPTIONS} />
+                  </Field>
+                  <Field label={form.taxReturnPeriod === 'ربعية' ? 'هل يتوفر آخر 6 إقرارات ضريبية؟' : 'هل يتوفر آخر 15 إقراراً ضريبياً؟'}>
+                    <Select value={form.hasRequiredTaxReturns} onChange={set('hasRequiredTaxReturns')} options={FINANCIAL_STATEMENT_OPTIONS} />
+                  </Field>
+                </div>
+              </>
+            )}
+
+            {!isPosFunding && !isCashFunding && !isTaxFunding && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="إجمالي الإيداعات (ر.س)">
@@ -278,12 +329,10 @@ export default function Eligibility() {
                   : <XCircle    size={24} className="text-red-500 shrink-0" />}
                 <div>
                   <p className={`font-bold text-lg ${eligible ? 'text-green-700' : 'text-red-700'}`}>
-                    {eligible ? 'المنشأة مؤهلة للتمويل' : 'المنشأة غير مؤهلة حالياً'}
+                    {statusTitle}
                   </p>
                   <p className={`text-xs mt-0.5 ${eligible ? 'text-green-600' : 'text-red-500'}`}>
-                    {eligible
-                      ? `وجدنا ${result.entities.length} جهة أو مسار تمويلي مناسب`
-                      : 'لا تستوفي المنشأة شروط التمويل المتاحة حالياً'}
+                    {statusSubtitle}
                   </p>
                 </div>
               </div>
@@ -319,7 +368,7 @@ export default function Eligibility() {
                 />
               </div>
 
-              {!!result?.matchedRules?.length && (
+              {!!result?.matchedRules?.length && !isTaxFunding && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-bold text-gray-800 mb-3">السيناريو المطابق</h3>
                   <div className="flex flex-wrap gap-2">
@@ -336,7 +385,7 @@ export default function Eligibility() {
               )}
 
               {/* Eligible Entities — للأدمن فقط */}
-              {eligible && isAdmin && (
+              {eligible && isAdmin && !isTaxFunding && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-bold text-gray-800 mb-4">الجهات التمويلية المناسبة</h3>
                   <div className="space-y-3">
@@ -365,7 +414,7 @@ export default function Eligibility() {
                 </div>
               )}
               {/* رسالة للموظف/الشريك — لا يرى الجهات */}
-              {eligible && !isAdmin && (
+              {eligible && !isAdmin && !isTaxFunding && (
                 <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5 flex items-start gap-3">
                   <CheckCircle size={20} className="text-blue-500 shrink-0 mt-0.5" />
                   <div>
@@ -376,7 +425,7 @@ export default function Eligibility() {
               )}
 
               {/* Tips */}
-              {result?.tips?.length > 0 && (
+              {result?.tips?.length > 0 && !isTaxFunding && (
                 <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <Lightbulb size={17} className="text-amber-500" />
@@ -394,7 +443,19 @@ export default function Eligibility() {
               )}
 
               {/* Not eligible tips if no entities */}
-              {!eligible && !result?.tips?.length && (
+              {isTaxFunding && !declarationEligible && cashEligibleAlternative && (
+                <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle size={17} className="text-blue-500" />
+                    <h3 className="font-bold text-blue-800 text-sm">بديل مناسب</h3>
+                  </div>
+                  <p className="text-xs leading-6 text-blue-700">
+                    أنت غير مؤهل لتمويل الإقرارات حالياً، لكنك مؤهل لتمويل كاش لأن إجمالي إيداعاتك لآخر 12 شهر هو {SAR(Number(form.totalDeposit) || 0)}.
+                  </p>
+                </div>
+              )}
+
+              {!eligible && !result?.tips?.length && !isTaxFunding && (
                 <div className="bg-orange-50 rounded-2xl border border-orange-200 p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <AlertCircle size={17} className="text-orange-500" />
