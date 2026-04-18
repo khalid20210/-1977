@@ -143,17 +143,14 @@ router.post('/forgot-password/request-code', async (req, res) => {
 // POST /api/auth/forgot-password/verify-code
 router.post('/forgot-password/verify-code', async (req, res) => {
   try {
-    const { email, code, password } = req.body;
-    if (!email || !code || !password) {
-      return res.status(400).json({ error: 'البريد والرمز وكلمة المرور الجديدة مطلوبة' });
+    if (!jwtSecret) return res.status(500).json({ error: 'إعدادات المصادقة غير مكتملة' });
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: 'البريد والرمز مطلوبان' });
     }
 
     if (!/^\d{4}$/.test(String(code).trim())) {
       return res.status(400).json({ error: 'رمز التحقق يجب أن يكون 4 أرقام' });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
     }
 
     const result = await findUserForPasswordReset(email);
@@ -190,13 +187,55 @@ router.post('/forgot-password/verify-code', async (req, res) => {
       return res.status(400).json({ error: `الرمز غير صحيح. تبقى ${PASSWORD_RESET_MAX_ATTEMPTS - nextAttempts} محاولات.` });
     }
 
+    await db.prepare('UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?').run(resetRecord.id);
+
+    const resetToken = jwt.sign(
+      { id: user.id, purpose: 'password-reset' },
+      jwtSecret,
+      { expiresIn: '10m' }
+    );
+
+    return res.json({ message: 'تم التحقق من الرمز بنجاح.', resetToken });
+  } catch (err) {
+    console.error('Forgot password verify-code error:', err);
+    return res.status(500).json({ error: 'خطأ في الخادم، حاول مجدداً' });
+  }
+});
+
+// POST /api/auth/forgot-password/reset-password
+router.post('/forgot-password/reset-password', async (req, res) => {
+  try {
+    if (!jwtSecret) return res.status(500).json({ error: 'إعدادات المصادقة غير مكتملة' });
+    const { resetToken, password } = req.body;
+    if (!resetToken || !password) {
+      return res.status(400).json({ error: 'رمز الجلسة وكلمة المرور الجديدة مطلوبان' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
+    }
+
+    let payload;
+    try {
+      payload = jwt.verify(resetToken, jwtSecret);
+    } catch (error) {
+      return res.status(400).json({ error: 'جلسة استعادة كلمة المرور غير صالحة أو منتهية' });
+    }
+
+    if (payload?.purpose !== 'password-reset' || !payload?.id) {
+      return res.status(400).json({ error: 'جلسة استعادة كلمة المرور غير صالحة' });
+    }
+
+    const user = await db.prepare('SELECT id, status FROM users WHERE id = ?').get(payload.id);
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    if (user.status === 'blocked') return res.status(403).json({ error: 'الحساب محظور. تواصل مع الإدارة.' });
+
     const hashedPassword = await bcrypt.hash(password, 12);
     await db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, user.id);
-    await db.prepare('UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?').run(resetRecord.id);
 
     return res.json({ message: 'تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.' });
   } catch (err) {
-    console.error('Forgot password verify-code error:', err);
+    console.error('Forgot password reset-password error:', err);
     return res.status(500).json({ error: 'خطأ في الخادم، حاول مجدداً' });
   }
 });
