@@ -8,6 +8,7 @@ import {
 const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
 const ENTITY_TYPES  = ['مؤسسة', 'شركة شخص واحد', 'شركة متعددة الشركاء'];
 const OWNERSHIP_TYPES = ['سعودي', 'مختلط', 'مستثمر'];
+const FINANCIAL_STATEMENT_OPTIONS = ['لا', 'نعم'];
 
 const SAR = n => `${Number(n).toLocaleString('ar-SA', { maximumFractionDigits: 0 })} ر.س`;
 
@@ -83,9 +84,8 @@ export default function Eligibility() {
     totalPos:       '',
     totalDeposit:   '',
     totalTransfer:  '',
-    months:         '12',
     recordAgeMonths:'24',
-    liabilitiesAmount: '',
+    hasFinancialStatements: 'لا',
     profitRatio: '',
   });
 
@@ -94,6 +94,30 @@ export default function Eligibility() {
   const [checked, setChecked] = useState(false);
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+  const isPosFunding = form.fundingType === 'نقاط بيع';
+  const isCashFunding = form.fundingType === 'كاش';
+
+  const handleFundingTypeChange = (e) => {
+    const nextFundingType = e.target.value;
+    setForm((current) => ({
+      ...current,
+      fundingType: nextFundingType,
+      totalPos: nextFundingType === 'نقاط بيع' ? current.totalPos : '',
+      totalDeposit: nextFundingType === 'كاش' ? current.totalDeposit : current.totalDeposit,
+      totalTransfer: nextFundingType === 'نقاط بيع' || nextFundingType === 'كاش' ? '' : current.totalTransfer,
+      hasFinancialStatements: nextFundingType === 'كاش' ? current.hasFinancialStatements : 'لا',
+      profitRatio: nextFundingType === 'كاش' && current.hasFinancialStatements === 'نعم' ? current.profitRatio : '',
+    }));
+  };
+
+  const handleFinancialStatementsChange = (e) => {
+    const nextValue = e.target.value;
+    setForm((current) => ({
+      ...current,
+      hasFinancialStatements: nextValue,
+      profitRatio: nextValue === 'نعم' ? current.profitRatio : '',
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,17 +128,17 @@ export default function Eligibility() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          totalPos:        Number(form.totalPos)        || 0,
-          totalDeposit:    Number(form.totalDeposit)    || 0,
-          totalTransfer:   Number(form.totalTransfer)   || 0,
-          months:          Number(form.months)          || 12,
+          totalPos:        isPosFunding ? (Number(form.totalPos) || 0) : 0,
+          totalDeposit:    isCashFunding ? (Number(form.totalDeposit) || 0) : (Number(form.totalDeposit) || 0),
+          totalTransfer:   isPosFunding || isCashFunding ? 0 : (Number(form.totalTransfer) || 0),
+          months:          12,
           fundingType:     form.fundingType,
           bankName:        form.bankName,
           recordAgeMonths: Number(form.recordAgeMonths) || 0,
           ownershipType:   form.ownershipType,
           entityType:      form.entityType,
-          liabilitiesAmount:Number(form.liabilitiesAmount) || 0,
-          profitRatio:     Number(form.profitRatio) || 0,
+          liabilitiesAmount: 0,
+          profitRatio:     form.hasFinancialStatements === 'نعم' ? (Number(form.profitRatio) || 0) : 0,
         }),
       });
       if (res.ok) {
@@ -149,7 +173,7 @@ export default function Eligibility() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Field label="نوع التمويل">
-                <Select value={form.fundingType} onChange={set('fundingType')} options={FUNDING_TYPES} />
+                <Select value={form.fundingType} onChange={handleFundingTypeChange} options={FUNDING_TYPES} />
               </Field>
               <Field label="نوع المنشأة">
                 <Select value={form.entityType} onChange={set('entityType')} options={ENTITY_TYPES} />
@@ -170,41 +194,60 @@ export default function Eligibility() {
               </Field>
             </div>
 
-            {form.fundingType === 'نقاط بيع' && (
-              <Field label="إجمالي نقاط البيع — 12 شهر (ر.س)">
-                <NumberInput value={form.totalPos} onChange={set('totalPos')} placeholder="مثال: 1500000" />
-              </Field>
+            {isPosFunding && (
+              <div className="grid grid-cols-1 gap-3">
+                <Field label="إجمالي نقاط البيع لآخر 12 شهر (ر.س)">
+                  <NumberInput value={form.totalPos} onChange={set('totalPos')} placeholder="مثال: 1500000" />
+                </Field>
+              </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="إجمالي الإيداعات (ر.س)">
-                <NumberInput value={form.totalDeposit} onChange={set('totalDeposit')} />
-              </Field>
-              <Field label="إجمالي التحويلات (ر.س)">
-                <NumberInput value={form.totalTransfer} onChange={set('totalTransfer')} />
-              </Field>
-            </div>
+            {isCashFunding && (
+              <>
+                <div className="grid grid-cols-1 gap-3">
+                  <Field label="إجمالي الإيداعات لآخر 12 شهر (ر.س)">
+                    <NumberInput value={form.totalDeposit} onChange={set('totalDeposit')} placeholder="مثال: 3000000" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="هل يوجد قوائم مالية؟">
+                    <Select
+                      value={form.hasFinancialStatements}
+                      onChange={handleFinancialStatementsChange}
+                      options={FINANCIAL_STATEMENT_OPTIONS}
+                    />
+                  </Field>
+                  {form.hasFinancialStatements === 'نعم' && (
+                    <Field label="كم نسبة الربح؟ (%)">
+                      <NumberInput value={form.profitRatio} onChange={set('profitRatio')} placeholder="8" />
+                    </Field>
+                  )}
+                </div>
+              </>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="عدد أشهر الكشف">
-                <NumberInput value={form.months} onChange={set('months')} placeholder="12" />
-              </Field>
-              <Field label="عمر السجل التجاري (شهر)">
-                <NumberInput value={form.recordAgeMonths} onChange={set('recordAgeMonths')} placeholder="24" />
-              </Field>
-            </div>
+            {!isPosFunding && !isCashFunding && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="إجمالي الإيداعات (ر.س)">
+                    <NumberInput value={form.totalDeposit} onChange={set('totalDeposit')} />
+                  </Field>
+                  <Field label="إجمالي التحويلات (ر.س)">
+                    <NumberInput value={form.totalTransfer} onChange={set('totalTransfer')} />
+                  </Field>
+                </div>
+                <Field label="نسبة الربح بالقوائم (%)">
+                  <NumberInput value={form.profitRatio} onChange={set('profitRatio')} placeholder="8" />
+                </Field>
+              </>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="المديونيات على المنشأة (ر.س)">
-                <NumberInput value={form.liabilitiesAmount} onChange={set('liabilitiesAmount')} placeholder="0" />
-              </Field>
-              <Field label="نسبة الربح بالقوائم (%)">
-                <NumberInput value={form.profitRatio} onChange={set('profitRatio')} placeholder="8" />
-              </Field>
-            </div>
+            <Field label="عمر السجل التجاري (شهر)">
+              <NumberInput value={form.recordAgeMonths} onChange={set('recordAgeMonths')} placeholder="24" />
+            </Field>
 
             <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-[11px] text-gray-500 leading-6">
-              المديونيات المفضلة: لا تتجاوز 30% من الإيرادات وتكون أقل من إجمالي الإيرادات. للمستثمر أو المنشأة الأجنبية قد يطلب كفيل أو رهن إذا كانت ربحية القوائم أقل من 8%.
+              يتم الاحتساب على آخر 12 شهر تلقائياً. نعرض فقط الحقول المرتبطة بنوع التمويل المختار لتقليل التشتت في الإدخال.
             </div>
 
             <button
