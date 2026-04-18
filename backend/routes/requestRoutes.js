@@ -107,6 +107,10 @@ async function checkEligibility(
   entityType = 'شركة',
   liabilitiesAmount = 0,
   profitRatio = 0,
+  personalSalary = 0,
+  hasSimahIssues = false,
+  hasServiceStop = false,
+  personalNationality = 'سعودي',
 ) {
   const entities = await db.prepare('SELECT * FROM funding_entities WHERE is_active = 1 ORDER BY priority DESC').all();
   const isRajhi = isRajhiBank(bankName);
@@ -125,6 +129,59 @@ async function checkEligibility(
   const matchedRules = [];
   let eligibleEntities = [];
   let isEligible = false;
+  const salaryAmount = Number(personalSalary) || 0;
+  const personalDebtRatio = salaryAmount > 0 ? Math.round((debtAmount / salaryAmount) * 100) : 0;
+
+  if (fundingType === 'تمويل شخصي') {
+    const isSaudiCitizen = String(personalNationality || '').trim() === 'سعودي';
+    const hasCleanSimah = !hasSimahIssues;
+    const hasNoServiceBlocks = !hasServiceStop;
+    const salaryEligible = salaryAmount >= 4000;
+    const debtEligible = salaryAmount > 0 && debtAmount <= salaryAmount * 0.33;
+
+    isEligible = isSaudiCitizen && salaryEligible && debtEligible && hasCleanSimah && hasNoServiceBlocks;
+
+    if (isEligible) {
+      matchedRules.push('تمويل شخصي سعودي بدون تعثر أو إيقاف خدمات');
+      eligibleEntities = [
+        pickEntity(
+          entities,
+          ['تمويل شخصي', 'شخصي'],
+          'تمويل شخصي',
+          'مؤهل لتمويل شخصي: الجنسية سعودي، الراتب 4,000 ر.س فأعلى، والمديونية لا تتجاوز 33% من الراتب مع خلو الحالة من التعثر وإيقاف الخدمات.'
+        ),
+      ];
+    } else {
+      if (!isSaudiCitizen) tips.push('التمويل الشخصي في هذا المسار مخصص حالياً للسعوديين فقط.');
+      if (!salaryEligible) tips.push('يشترط أن يكون الراتب 4,000 ر.س فأعلى للتمويل الشخصي.');
+      if (!debtEligible) tips.push('يشترط ألا تتجاوز المديونية القائمة 33% من الراتب الشهري.');
+      if (!hasCleanSimah) tips.push('وجود تعثر أو تأخير في سمة يجعل الحالة غير مؤهلة للتمويل الشخصي.');
+      if (!hasNoServiceBlocks) tips.push('وجود إيقاف خدمات أو سند تنفيذي يجعل الحالة غير مؤهلة للتمويل الشخصي.');
+    }
+
+    return {
+      eligible: isEligible,
+      entities: isEligible ? eligibleEntities : [],
+      types: isEligible ? [fundingType] : [],
+      tips,
+      matchedRules,
+      annualRevenue: salaryAmount,
+      combinedMovement: 0,
+      interestRateMin: 0,
+      interestRateMax: 0,
+      interestRateLabel: 'حسب جهة التمويل',
+      estimatedFundingAmount: 0,
+      debtAmount,
+      debtRatio: personalDebtRatio,
+      debtHealthy: debtEligible,
+      successProbability: isEligible ? 85 : 0,
+      profitRatio: 0,
+      needsCollateral: false,
+      guaranteeNote: isEligible
+        ? 'الحالة مستوفية لشروط التمويل الشخصي الأساسية.'
+        : 'الحالة لا تستوفي شروط التمويل الشخصي الأساسية حالياً.',
+    };
+  }
 
   const rajhiSolePosEligible = !isForeign && entityClass === 'sole' && isRajhi && recordAgeMonths >= 7 && Number(totalPos) >= 700000;
   const rajhiSoleRevenueEligible = !isForeign && entityClass === 'sole' && isRajhi && recordAgeMonths >= 24 && annualRevenue >= 3000000;
@@ -300,13 +357,15 @@ router.post('/eligibility-check', authMiddleware, async (req, res) => {
       months = 12, fundingType = 'نقاط بيع', bankName = '',
       recordAgeMonths = 0, ownershipType = 'سعودي', entityType = 'شركة',
       liabilitiesAmount = 0, profitRatio = 0,
+      personalSalary = 0, hasSimahIssues = false, hasServiceStop = false, personalNationality = 'سعودي',
     } = req.body;
 
     const result = await checkEligibility(
       Number(totalPos), Number(totalDeposit), Number(totalTransfer),
       Number(months), fundingType, bankName,
       Number(recordAgeMonths), ownershipType, entityType,
-      Number(liabilitiesAmount), Number(profitRatio)
+      Number(liabilitiesAmount), Number(profitRatio),
+      Number(personalSalary), Boolean(hasSimahIssues), Boolean(hasServiceStop), personalNationality
     );
 
     res.json(result);
