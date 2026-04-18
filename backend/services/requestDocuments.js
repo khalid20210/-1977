@@ -1,11 +1,8 @@
 const db = require('../database');
 
-const STANDARD_REQUEST_DOCUMENTS = [
+const COMMON_REQUEST_DOCUMENTS = [
   'صورة السجل التجاري',
-  'عقد التأسيس (إن كانت المنشأة شركة)',
   'صورة الهوية للمالك أو الشركاء مع تاريخ الانتهاء',
-  'هوية أبشر للمستثمر مع تاريخ الانتهاء',
-  'الترخيص الاستثماري (إذا كانت الشركة أجنبية)',
   'شهادة بلدي',
   'شهادة التأمينات',
   'شهادة الزكاة والدخل',
@@ -14,12 +11,57 @@ const STANDARD_REQUEST_DOCUMENTS = [
   'العنوان الوطني للمنشأة والملاك',
   'موقع المنشأة من Google',
   'شهادة الآيبان بالباركود',
-  'العقود إن وجدت',
-  'التصريح للنشاطات الخاصة حسب الجهة التابعة لها',
+];
+
+const COMPANY_ONLY_DOCUMENTS = [
+  'عقد التأسيس',
+];
+
+const INVESTOR_ONLY_DOCUMENTS = [
+  'هوية أبشر للمستثمر مع تاريخ الانتهاء',
+  'الترخيص الاستثماري',
 ];
 
 function normalizeDocumentName(value = '') {
   return String(value).trim().toLowerCase();
+}
+
+function parseDocumentCollection(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function isInvestorOwnership(ownershipType = '') {
+  return ['مستثمر', 'مختلط', 'أجنبي', 'اجنبي'].includes(String(ownershipType).trim());
+}
+
+function isCompanyEntity(entityType = '') {
+  return String(entityType).trim().includes('شركة');
+}
+
+function buildRequiredRequestDocuments(requestMeta = {}, extraDocuments = []) {
+  const requiredDocuments = [...COMMON_REQUEST_DOCUMENTS];
+
+  if (isCompanyEntity(requestMeta.entity_type)) {
+    requiredDocuments.push(...COMPANY_ONLY_DOCUMENTS);
+  }
+
+  if (isInvestorOwnership(requestMeta.ownership_type)) {
+    requiredDocuments.push(...INVESTOR_ONLY_DOCUMENTS);
+  }
+
+  return uniqueDocumentNames([
+    ...requiredDocuments,
+    ...parseDocumentCollection(requestMeta.fe_required_docs),
+    ...parseDocumentCollection(extraDocuments),
+  ]);
 }
 
 function uniqueDocumentNames(documentNames = []) {
@@ -40,11 +82,14 @@ function uniqueDocumentNames(documentNames = []) {
   return unique;
 }
 
-async function ensureRequestDocuments(requestId, extraDocuments = []) {
-  const requiredDocuments = uniqueDocumentNames([
-    ...STANDARD_REQUEST_DOCUMENTS,
-    ...extraDocuments,
-  ]);
+async function ensureRequestDocuments(requestId, requestMeta = {}, extraDocuments = []) {
+  if (Array.isArray(requestMeta)) {
+    extraDocuments = requestMeta;
+    requestMeta = {};
+  }
+
+  const requiredDocuments = buildRequiredRequestDocuments(requestMeta, extraDocuments);
+  const requiredNames = new Set(requiredDocuments.map(normalizeDocumentName));
 
   const existingDocuments = await db.prepare(
     'SELECT id, document_name FROM request_documents WHERE request_id = ? ORDER BY id'
@@ -62,11 +107,18 @@ async function ensureRequestDocuments(requestId, extraDocuments = []) {
     ).run(requestId, documentName);
   }
 
+  for (const existingDocument of existingDocuments) {
+    if (requiredNames.has(normalizeDocumentName(existingDocument.document_name))) continue;
+
+    await db.prepare('DELETE FROM request_documents WHERE id = ?').run(existingDocument.id);
+  }
+
   return db.prepare('SELECT * FROM request_documents WHERE request_id = ? ORDER BY id').all(requestId);
 }
 
 module.exports = {
-  STANDARD_REQUEST_DOCUMENTS,
+  COMMON_REQUEST_DOCUMENTS,
+  buildRequiredRequestDocuments,
   ensureRequestDocuments,
   uniqueDocumentNames,
 };

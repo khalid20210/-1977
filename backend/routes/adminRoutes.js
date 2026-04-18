@@ -155,15 +155,16 @@ router.get('/requests', adminMiddleware, async (req, res) => {
 router.get('/requests/:id', adminMiddleware, async (req, res) => {
   try {
     const request = await db.prepare(`
-      SELECT r.*, u.name as user_name, u.phone as user_phone, u.email as user_email,
-             fe.name as funding_entity_name, fe.whatsapp_number as fe_whatsapp
+            SELECT r.*, u.name as user_name, u.phone as user_phone, u.email as user_email,
+              fe.name as funding_entity_name, fe.whatsapp_number as fe_whatsapp,
+              fe.required_documents as fe_required_docs
       FROM requests r
       LEFT JOIN users u ON r.user_id = u.id
       LEFT JOIN funding_entities fe ON r.funding_entity_id = fe.id
       WHERE r.id = ?
     `).get(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
-    await ensureRequestDocuments(req.params.id);
+    await ensureRequestDocuments(req.params.id, request);
     const [bankStatements, accountStatements, taxDocuments, documents, statusHistory] = await Promise.all([
       db.prepare('SELECT * FROM bank_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id),
       db.prepare('SELECT * FROM account_statements WHERE request_id = ? ORDER BY id').all(req.params.id),

@@ -60,70 +60,51 @@ function formatPartnerLabel(partner) {
   return `${name || 'بدون اسم'} (${descriptor})`;
 }
 
-function getDocumentGuidance(documentName, requestMeta = {}) {
+function getDocumentDescription(documentName, requestMeta = {}) {
   const entityType = String(requestMeta?.entity_type || '').trim();
   const ownershipType = String(requestMeta?.ownership_type || '').trim();
   const isCompany = entityType.includes('شركة');
   const isInvestor = ['مستثمر', 'أجنبي', 'اجنبي', 'مختلط'].includes(ownershipType);
 
   if (documentName.includes('عقد التأسيس')) {
-    return {
-      tone: isCompany ? 'required' : 'conditional',
-      text: isCompany ? 'مطلوب لأن الكيان الحالي شركة.' : 'يطلب فقط إذا كانت المنشأة شركة.',
-    };
+    return isCompany ? 'مطلوب لأن الكيان الحالي شركة.' : 'مستند يخص الشركات.';
   }
 
   if (documentName.includes('هوية أبشر')) {
-    return {
-      tone: isInvestor ? 'required' : 'conditional',
-      text: isInvestor ? 'مطلوب لأن الملكية الحالية مستثمر أو أجنبية.' : 'يطلب فقط في حالات المستثمر أو الملكية الأجنبية.',
-    };
+    return isInvestor ? 'مطلوب لأن الملكية الحالية مستثمر أو أجنبية.' : 'مستند خاص بالمستثمر.';
   }
 
   if (documentName.includes('الترخيص الاستثماري')) {
-    return {
-      tone: isInvestor ? 'required' : 'conditional',
-      text: isInvestor ? 'مطلوب للمنشآت الأجنبية أو الاستثمارية.' : 'يطلب فقط إذا كانت الشركة أجنبية أو استثمارية.',
-    };
-  }
-
-  if (documentName.includes('العقود إن وجدت')) {
-    return {
-      tone: 'conditional',
-      text: 'يرفع عند توفر عقود تشغيل أو توريد أو مشاريع داعمة للملف.',
-    };
-  }
-
-  if (documentName.includes('التصريح للنشاطات الخاصة')) {
-    return {
-      tone: 'conditional',
-      text: 'يطلب فقط للأنشطة الخاصة مثل النقليات أو المراكز الطبية أو الشقق المفروشة حسب الجهة المنظمة.',
-    };
+    return isInvestor ? 'مطلوب للمنشآت الاستثمارية أو الأجنبية.' : 'مستند خاص بالمنشآت الاستثمارية.';
   }
 
   if (documentName.includes('صورة الهوية')) {
-    return {
-      tone: 'required',
-      text: isCompany ? 'يرفق هوية جميع الشركاء أو من يلزم مع توضيح تاريخ الانتهاء.' : 'يرفق هوية المالك مع توضيح تاريخ الانتهاء.',
-    };
+    return isCompany ? 'يرفق هوية جميع الشركاء أو من يلزم مع توضيح تاريخ الانتهاء.' : 'يرفق هوية المالك مع توضيح تاريخ الانتهاء.';
   }
 
   if (documentName.includes('العنوان الوطني')) {
-    return {
-      tone: 'required',
-      text: 'يرفق عنوان المنشأة وعنوان الملاك إذا كانا في ملفات منفصلة.',
-    };
+    return 'يرفق عنوان المنشأة وعنوان الملاك إذا كانا في ملفات منفصلة.';
   }
 
-  return {
-    tone: 'required',
-    text: 'مستند أساسي ضمن ملف الطلب.',
-  };
+  return 'مستند مطلوب ضمن ملف هذا الطلب.';
 }
 
-function getGuidanceClassName(tone) {
-  if (tone === 'conditional') return 'bg-slate-100 text-slate-700';
-  return 'bg-blue-100 text-blue-700';
+function repairUploadedFileName(value = '') {
+  const original = String(value || '').trim();
+  if (!original) return '';
+
+  if (!/[ØÙÃÐ]/.test(original) && !original.includes('�')) {
+    return original;
+  }
+
+  try {
+    const bytes = Uint8Array.from(original, (char) => char.charCodeAt(0) & 0xff);
+    const decoded = new TextDecoder('utf-8').decode(bytes).trim();
+    if (decoded && !decoded.includes('�')) return decoded;
+  } catch (error) {
+  }
+
+  return original;
 }
 
 function getDocumentStatusMeta(document) {
@@ -160,7 +141,8 @@ function NamedDocumentsUploader({ documents, uploadingDocId, onUpload, getFileUr
     <div className="grid gap-2 sm:gap-3 xl:grid-cols-2">
       {documents.map((document) => {
         const statusMeta = getDocumentStatusMeta(document);
-        const guidance = getDocumentGuidance(document.document_name, requestMeta);
+        const description = getDocumentDescription(document.document_name, requestMeta);
+        const displayFileName = repairUploadedFileName(document.file_name || '');
 
         return (
           <div key={document.id} className="flex h-full flex-col justify-between rounded-lg border border-gray-200 bg-white p-2 shadow-sm transition-shadow hover:shadow-md sm:rounded-2xl sm:p-4">
@@ -170,13 +152,10 @@ function NamedDocumentsUploader({ documents, uploadingDocId, onUpload, getFileUr
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold sm:px-2.5 sm:py-1 sm:text-[11px] ${statusMeta.className}`}>
                     {statusMeta.label}
                   </span>
-                  <span className={`hidden rounded-full px-2 py-0.5 text-[10px] font-bold sm:inline-flex sm:px-2.5 sm:py-1 sm:text-[11px] ${getGuidanceClassName(guidance.tone)}`}>
-                    {guidance.tone === 'conditional' ? 'شرطي' : 'أساسي'}
-                  </span>
                 </div>
-                <p className="mt-1 hidden text-[11px] leading-5 text-gray-600 sm:block sm:text-xs">{guidance.text}</p>
+                <p className="mt-1 hidden text-[11px] leading-5 text-gray-600 sm:block sm:text-xs">{description}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-gray-500 sm:text-xs">
-                  <span className="block max-w-full truncate">{document.file_name || 'بدون ملف'}</span>
+                  <span className="block max-w-full truncate">{displayFileName || 'لم يتم رفع ملف بعد'}</span>
                   {document.expiry_date && <span className="hidden sm:inline">الانتهاء: {document.expiry_date}</span>}
                   {document.file_path && getFileUrl(document.file_path) && (
                     <a href={getFileUrl(document.file_path)} target="_blank" rel="noopener noreferrer" className="hidden font-semibold text-blue-600 hover:underline sm:inline">

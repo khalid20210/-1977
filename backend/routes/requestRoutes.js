@@ -44,6 +44,32 @@ function normalizeText(value = '') {
   return String(value).trim().toLowerCase();
 }
 
+function parseRequiredDocuments(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function decodeUploadedFileName(originalName = '') {
+  const fallbackName = String(originalName || '').trim();
+  if (!fallbackName) return 'file';
+
+  try {
+    const decodedName = Buffer.from(fallbackName, 'latin1').toString('utf8').trim();
+    if (!decodedName) return fallbackName;
+    if (decodedName.includes('�') && !fallbackName.includes('�')) return fallbackName;
+    return decodedName;
+  } catch (error) {
+    return fallbackName;
+  }
+}
+
 function isRajhiBank(bankName = '') {
   const normalized = normalizeText(bankName);
   return normalized.includes('راجحي') || normalized.includes('alrajhi') || normalized.includes('rajhi');
@@ -354,7 +380,10 @@ router.post('/', authMiddleware, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(company_name.trim(), entity_type || 'شركة', owner_name || null, owner_phone || null, reqId, req.user.id);
 
-    await ensureRequestDocuments(reqId);
+    await ensureRequestDocuments(reqId, {
+      entity_type: entity_type || 'شركة',
+      ownership_type: ownership_type || 'سعودي',
+    });
 
     const request = await db.prepare('SELECT * FROM requests WHERE id = ?').get(reqId);
     await createNotification(req.user.id, {
@@ -393,7 +422,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
-    await ensureRequestDocuments(req.params.id);
+    await ensureRequestDocuments(req.params.id, request);
 
     const bankStatements = await db.prepare('SELECT * FROM bank_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
     const accountStatements = await db.prepare('SELECT * FROM account_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
@@ -531,7 +560,7 @@ router.post('/:id/bank-statements', authMiddleware, bankUpload.array('files', 15
 
     const inserted = [];
     for (const file of req.files) {
-      const fixedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      const fixedName = decodeUploadedFileName(file.originalname);
       const r = await db.prepare(`
         INSERT INTO bank_statements (request_id, file_path, file_name, analysis_status)
         VALUES (?, ?, ?, 'pending')
@@ -626,7 +655,7 @@ router.post('/:id/account-statements', authMiddleware, accountUpload.array('file
 
     const inserted = [];
     for (const file of req.files) {
-      const fixedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      const fixedName = decodeUploadedFileName(file.originalname);
       const r = await db.prepare(`
         INSERT INTO account_statements (request_id, file_path, file_name)
         VALUES (?, ?, ?)
@@ -650,7 +679,7 @@ router.post('/:id/tax-documents', authMiddleware, taxUpload.array('files', 15), 
 
     const inserted = [];
     for (const file of req.files) {
-      const fixedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      const fixedName = decodeUploadedFileName(file.originalname);
       const r = await db.prepare(`
         INSERT INTO tax_documents (request_id, file_path, file_name)
         VALUES (?, ?, ?)
@@ -677,7 +706,7 @@ router.post('/:id/select-entity', authMiddleware, async (req, res) => {
 
     const requiredDocs = JSON.parse(entity.required_documents || '[]');
 
-    await ensureRequestDocuments(req.params.id, requiredDocs);
+    await ensureRequestDocuments(req.params.id, request, requiredDocs);
 
     await db.prepare("UPDATE requests SET funding_entity_id = ?, status = 'docs_pending', updated_at = NOW() WHERE id = ?").run(funding_entity_id, req.params.id);
 
@@ -703,7 +732,7 @@ router.post('/:id/documents/:docId/upload', authMiddleware, docUpload.single('fi
     let aiResult = null;
 
     try {
-      aiResult = await analyzeDocument(req.file.path, req.file.originalname);
+      aiResult = await analyzeDocument(req.file.path, decodeUploadedFileName(req.file.originalname));
       expiryDate = aiResult.expiry_date && aiResult.expiry_date !== 'null' ? aiResult.expiry_date : null;
       docStatus = aiResult.is_expired ? 'expired' : 'valid';
     } catch (aiErr) {
@@ -711,11 +740,13 @@ router.post('/:id/documents/:docId/upload', authMiddleware, docUpload.single('fi
       docStatus = 'valid';
     }
 
+    const fixedName = decodeUploadedFileName(req.file.originalname);
+
     await db.prepare(`
       UPDATE request_documents SET
         file_path = ?, file_name = ?, expiry_date = ?, status = ?, uploaded_at = NOW()
       WHERE id = ?
-    `).run(req.file.path, req.file.originalname, expiryDate, docStatus, req.params.docId);
+    `).run(req.file.path, fixedName, expiryDate, docStatus, req.params.docId);
 
     await checkAndUpdateDocStatus(req.params.id);
 
@@ -750,7 +781,7 @@ router.post('/:id/submit-file', authMiddleware, completeUpload.single('file'), a
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
     const filePath = req.file ? req.file.path : request.complete_file_path || null;
-    const fileName = req.file ? Buffer.from(req.file.originalname, 'latin1').toString('utf8') : request.complete_file_name || null;
+    const fileName = req.file ? decodeUploadedFileName(req.file.originalname) : request.complete_file_name || null;
     const submissionNote = req.file ? 'تم رفع الملف الكامل من الموظف' : 'تم إرسال المستندات المرفوعة من الموظف';
     const notificationTitle = req.file
       ? `تم رفع الملف الكامل لطلب ${request.company_name}`
@@ -819,7 +850,7 @@ router.post('/:id/upload-consultation-contract', authMiddleware, contractUpload.
 
     await db.prepare(
       'INSERT INTO contracts (request_id, contract_type, file_path, file_name, uploaded_by) VALUES (?, ?, ?, ?, ?)'
-    ).run(req.params.id, 'consultation', req.file.path, req.file.originalname, req.user.id);
+    ).run(req.params.id, 'consultation', req.file.path, decodeUploadedFileName(req.file.originalname), req.user.id);
 
     await db.prepare(`
       UPDATE requests SET
@@ -828,7 +859,7 @@ router.post('/:id/upload-consultation-contract', authMiddleware, contractUpload.
         status = 'contract_submitted',
         updated_at = NOW()
       WHERE id = ?
-    `).run(req.file.path, req.file.originalname, req.params.id);
+    `).run(req.file.path, decodeUploadedFileName(req.file.originalname), req.params.id);
 
     await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
       req.params.id, 'contract_submitted', 'تم رفع عقد الاستشارات وإرساله للمدير', req.user.id
@@ -871,6 +902,17 @@ router.put('/:id', authMiddleware, async (req, res) => {
     );
     await db.prepare('UPDATE companies SET company_name = ?, entity_type = ?, owner_name = ?, owner_phone = ? WHERE request_id = ?')
       .run(company_name.trim(), entity_type || request.entity_type, owner_name || null, owner_phone || null, req.params.id);
+    let fundingEntityDocuments = [];
+    if (request.funding_entity_id) {
+      const fundingEntity = await db.prepare('SELECT required_documents FROM funding_entities WHERE id = ?').get(request.funding_entity_id);
+      fundingEntityDocuments = parseRequiredDocuments(fundingEntity?.required_documents);
+    }
+    await ensureRequestDocuments(req.params.id, {
+      ...request,
+      entity_type: entity_type || request.entity_type,
+      ownership_type: ownership_type || request.ownership_type,
+      fe_required_docs: fundingEntityDocuments,
+    });
     const updated = await db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
     res.json(updated);
   } catch (err) {
