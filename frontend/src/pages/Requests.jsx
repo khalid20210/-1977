@@ -50,6 +50,159 @@ const USER_STATUS_MAP = {
 
 const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
 
+const DOC_UPLOAD_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp';
+const ACCOUNT_STATEMENT_ACCEPT = '.xlsx,.xls';
+
+function getDocumentGuidance(documentName, requestMeta = {}) {
+  const entityType = String(requestMeta?.entity_type || '').trim();
+  const ownershipType = String(requestMeta?.ownership_type || '').trim();
+  const isCompany = entityType.includes('شركة');
+  const isInvestor = ['مستثمر', 'أجنبي', 'اجنبي', 'مختلط'].includes(ownershipType);
+
+  if (documentName.includes('عقد التأسيس')) {
+    return {
+      tone: isCompany ? 'required' : 'conditional',
+      text: isCompany ? 'مطلوب لأن الكيان الحالي شركة.' : 'يطلب فقط إذا كانت المنشأة شركة.',
+    };
+  }
+
+  if (documentName.includes('هوية أبشر')) {
+    return {
+      tone: isInvestor ? 'required' : 'conditional',
+      text: isInvestor ? 'مطلوب لأن الملكية الحالية مستثمر أو أجنبية.' : 'يطلب فقط في حالات المستثمر أو الملكية الأجنبية.',
+    };
+  }
+
+  if (documentName.includes('الترخيص الاستثماري')) {
+    return {
+      tone: isInvestor ? 'required' : 'conditional',
+      text: isInvestor ? 'مطلوب للمنشآت الأجنبية أو الاستثمارية.' : 'يطلب فقط إذا كانت الشركة أجنبية أو استثمارية.',
+    };
+  }
+
+  if (documentName.includes('العقود إن وجدت')) {
+    return {
+      tone: 'conditional',
+      text: 'يرفع عند توفر عقود تشغيل أو توريد أو مشاريع داعمة للملف.',
+    };
+  }
+
+  if (documentName.includes('التصريح للنشاطات الخاصة')) {
+    return {
+      tone: 'conditional',
+      text: 'يطلب فقط للأنشطة الخاصة مثل النقليات أو المراكز الطبية أو الشقق المفروشة حسب الجهة المنظمة.',
+    };
+  }
+
+  if (documentName.includes('صورة الهوية')) {
+    return {
+      tone: 'required',
+      text: isCompany ? 'يرفق هوية جميع الشركاء أو من يلزم مع توضيح تاريخ الانتهاء.' : 'يرفق هوية المالك مع توضيح تاريخ الانتهاء.',
+    };
+  }
+
+  if (documentName.includes('العنوان الوطني')) {
+    return {
+      tone: 'required',
+      text: 'يرفق عنوان المنشأة وعنوان الملاك إذا كانا في ملفات منفصلة.',
+    };
+  }
+
+  return {
+    tone: 'required',
+    text: 'مستند أساسي ضمن ملف الطلب.',
+  };
+}
+
+function getGuidanceClassName(tone) {
+  if (tone === 'conditional') return 'bg-slate-100 text-slate-700';
+  return 'bg-blue-100 text-blue-700';
+}
+
+function getDocumentStatusMeta(document) {
+  if (document?.status === 'expired') {
+    return {
+      label: 'منتهي الصلاحية',
+      className: 'bg-red-100 text-red-700',
+    };
+  }
+
+  if (document?.file_path) {
+    return {
+      label: 'مرفوع',
+      className: 'bg-emerald-100 text-emerald-700',
+    };
+  }
+
+  return {
+    label: 'بانتظار الرفع',
+    className: 'bg-amber-100 text-amber-700',
+  };
+}
+
+function NamedDocumentsUploader({ documents, uploadingDocId, onUpload, getFileUrl, requestMeta }) {
+  if (!documents || documents.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+        لا توجد قائمة مستندات لهذا الطلب حالياً.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {documents.map((document) => {
+        const statusMeta = getDocumentStatusMeta(document);
+        const guidance = getDocumentGuidance(document.document_name, requestMeta);
+
+        return (
+          <div key={document.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-bold text-gray-900">{document.document_name}</p>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${statusMeta.className}`}>
+                    {statusMeta.label}
+                  </span>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${getGuidanceClassName(guidance.tone)}`}>
+                    {guidance.tone === 'conditional' ? 'شرطي' : 'أساسي'}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-gray-600">{guidance.text}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <span>{document.file_name || 'لم يتم رفع ملف بعد'}</span>
+                  {document.expiry_date && <span>الانتهاء: {document.expiry_date}</span>}
+                  {document.file_path && getFileUrl(document.file_path) && (
+                    <a href={getFileUrl(document.file_path)} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline">
+                      تحميل الملف الحالي
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <label className={`flex min-w-[220px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-xs font-semibold transition-colors ${uploadingDocId === document.id ? 'border-blue-300 bg-blue-50 text-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+                <Upload size={14} className="flex-shrink-0" />
+                <span>{uploadingDocId === document.id ? 'جارٍ الرفع...' : (document.file_path ? 'استبدال المستند' : 'رفع المستند')}</span>
+                <input
+                  type="file"
+                  accept={DOC_UPLOAD_ACCEPT}
+                  className="hidden"
+                  disabled={uploadingDocId === document.id}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) onUpload(document.id, file);
+                    event.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Requests() {
   const { authFetch, user, isAdmin } = useAuth();
   const location = useLocation();
@@ -102,25 +255,104 @@ export default function Requests() {
   // Upload steps for new request (non-admin)
   const [newStep, setNewStep] = useState(1);
   const [newReqId, setNewReqId] = useState(null);
+  const [newRequestData, setNewRequestData] = useState(null);
   const [uploadBankFiles, setUploadBankFiles] = useState([]);
-  const [uploadDocsFile, setUploadDocsFile] = useState(null);
+  const [uploadAccountFiles, setUploadAccountFiles] = useState([]);
   const [uploadTaxFiles, setUploadTaxFiles] = useState([]);
   const [uploadingNew, setUploadingNew] = useState(false);
 
-  // Send file to admin (non-admin)
-  const [sendFileReq, setSendFileReq] = useState(null);
-  const [sendFileInput, setSendFileInput] = useState(null);
-  const [submittingSendFile, setSubmittingSendFile] = useState(false);
+  // Send uploaded package to admin (non-admin)
+  const [submittingPackageId, setSubmittingPackageId] = useState(null);
 
   // Upload files from review modal
   const [reviewBankFiles, setReviewBankFiles] = useState([]);
-  const [reviewDocsFile, setReviewDocsFile] = useState(null);
+  const [reviewAccountFiles, setReviewAccountFiles] = useState([]);
   const [reviewTaxFiles, setReviewTaxFiles] = useState([]);
   const [uploadingReview, setUploadingReview] = useState(false);
 
+  const resetNewFlow = () => {
+    setShowNew(false);
+    setNewStep(1);
+    setNewReqId(null);
+    setNewRequestData(null);
+    setUploadBankFiles([]);
+    setUploadAccountFiles([]);
+    setUploadTaxFiles([]);
+    setNewForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة', ownership_type: 'سعودي', funding_type: 'نقاط بيع', referred_by_id: '' });
+  };
+
+  const fetchUserRequestDetails = async (requestId) => {
+    const res = await authFetch(`/api/requests/${requestId}`);
+    return res.ok ? await res.json() : null;
+  };
+
+  const hasUploadedPackage = (requestLike) => {
+    if (!requestLike) return false;
+
+    const uploadedNamedDocs = Array.isArray(requestLike.documents)
+      ? requestLike.documents.some((document) => document.file_path)
+      : Number(requestLike.doc_valid || 0) > 0;
+
+    const hasBankStatements = Array.isArray(requestLike.bank_statements) && requestLike.bank_statements.length > 0;
+    const hasAccountStatements = Array.isArray(requestLike.account_statements) && requestLike.account_statements.length > 0;
+    const hasTaxDocuments = Array.isArray(requestLike.tax_documents) && requestLike.tax_documents.length > 0;
+    const hasCompleteFile = Boolean(requestLike.complete_file_path || requestLike.complete_file_name);
+
+    return uploadedNamedDocs || hasBankStatements || hasAccountStatements || hasTaxDocuments || hasCompleteFile;
+  };
+
+  const submitRequestPackage = async (requestLike) => {
+    if (!requestLike) return;
+    if (!hasUploadedPackage(requestLike)) {
+      alert('ارفع مستنداً واحداً على الأقل أو أضف الكشوفات والقوائم قبل الإرسال للإدارة');
+      return;
+    }
+
+    setSubmittingPackageId(requestLike.id);
+    const res = await authFetch(`/api/requests/${requestLike.id}/submit-file`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'تعذر إرسال الطلب للإدارة');
+    } else {
+      alert(data.message || 'تم إرسال الطلب للإدارة بنجاح');
+      if (reviewReq && Number(reviewReq.id) === Number(requestLike.id)) {
+        await reloadReview(requestLike.id);
+      }
+      await load();
+    }
+    setSubmittingPackageId(null);
+  };
+
+  const uploadRequestDocument = async ({ requestId, docId, file, refresh }) => {
+    if (!requestId || !docId || !file) return;
+
+    setUploadingDocId(docId);
+    const fd = new FormData();
+    fd.append('file', file);
+
+    const res = await authFetch(`/api/requests/${requestId}/documents/${docId}/upload`, {
+      method: 'POST',
+      body: fd,
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'تعذر رفع المستند');
+    } else if (data.status === 'expired') {
+      alert(data.message || 'تم رفع المستند لكن يبدو أنه منتهي الصلاحية');
+    }
+
+    await refresh();
+    await load();
+    setUploadingDocId(null);
+  };
+
   const submitReviewFiles = async () => {
     if (!reviewReq) return;
-    if (reviewBankFiles.length === 0 && !reviewDocsFile && reviewTaxFiles.length === 0) {
+    if (reviewBankFiles.length === 0 && reviewAccountFiles.length === 0 && reviewTaxFiles.length === 0) {
       alert('اختر ملفاً واحداً على الأقل'); return;
     }
     setUploadingReview(true);
@@ -130,20 +362,20 @@ export default function Requests() {
         reviewBankFiles.forEach(f => fd.append('files', f));
         await authFetch(`/api/requests/${reviewReq.id}/bank-statements`, { method: 'POST', body: fd });
       }
+      if (reviewAccountFiles.length > 0) {
+        const fd = new FormData();
+        reviewAccountFiles.forEach(f => fd.append('files', f));
+        await authFetch(`/api/requests/${reviewReq.id}/account-statements`, { method: 'POST', body: fd });
+      }
       if (reviewTaxFiles.length > 0) {
         const fd = new FormData();
         reviewTaxFiles.forEach(f => fd.append('files', f));
         await authFetch(`/api/requests/${reviewReq.id}/tax-documents`, { method: 'POST', body: fd });
       }
-      if (reviewDocsFile) {
-        const fd = new FormData();
-        fd.append('file', reviewDocsFile);
-        await authFetch(`/api/requests/${reviewReq.id}/submit-file`, { method: 'POST', body: fd });
-      }
       await reloadReview(reviewReq.id);
       await load();
       setReviewBankFiles([]);
-      setReviewDocsFile(null);
+      setReviewAccountFiles([]);
       setReviewTaxFiles([]);
       alert('تم رفع الملفات بنجاح');
     } catch (err) {
@@ -202,8 +434,9 @@ export default function Requests() {
     setPartners(Array.isArray(data) ? data : []);
     setNewStep(1);
     setNewReqId(null);
+    setNewRequestData(null);
     setUploadBankFiles([]);
-    setUploadDocsFile(null);
+    setUploadAccountFiles([]);
     setUploadTaxFiles([]);
     setShowNew(true);
   };
@@ -230,6 +463,8 @@ export default function Requests() {
     const d = await res.json();
     if (!res.ok) { alert(d.error || 'خطأ'); setSubmittingNew(false); return; }
     setNewReqId(d.id);
+    const detailData = await fetchUserRequestDetails(d.id);
+    setNewRequestData(detailData);
     setNewStep(2);
     setSubmittingNew(false);
   };
@@ -243,40 +478,22 @@ export default function Requests() {
         uploadBankFiles.forEach(f => fd.append('files', f));
         await authFetch(`/api/requests/${newReqId}/bank-statements`, { method: 'POST', body: fd });
       }
+      if (uploadAccountFiles.length > 0) {
+        const fd = new FormData();
+        uploadAccountFiles.forEach(f => fd.append('files', f));
+        await authFetch(`/api/requests/${newReqId}/account-statements`, { method: 'POST', body: fd });
+      }
       if (uploadTaxFiles.length > 0) {
         const fd = new FormData();
         uploadTaxFiles.forEach(f => fd.append('files', f));
         await authFetch(`/api/requests/${newReqId}/tax-documents`, { method: 'POST', body: fd });
       }
-      if (uploadDocsFile) {
-        const fd = new FormData();
-        fd.append('file', uploadDocsFile);
-        await authFetch(`/api/requests/${newReqId}/submit-file`, { method: 'POST', body: fd });
-      }
     } catch (err) {
       console.error('Upload error:', err);
     }
-    setShowNew(false);
-    setNewStep(1);
-    setNewReqId(null);
-    setUploadBankFiles([]);
-    setUploadDocsFile(null);
-    setUploadTaxFiles([]);
-    setNewForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة', ownership_type: 'سعودي', funding_type: 'نقاط بيع', referred_by_id: '' });
-    load();
+    resetNewFlow();
+    await load();
     setUploadingNew(false);
-  };
-
-  const submitSendFile = async () => {
-    if (!sendFileReq || !sendFileInput) return;
-    setSubmittingSendFile(true);
-    const fd = new FormData();
-    fd.append('file', sendFileInput);
-    const res = await authFetch(`/api/requests/${sendFileReq.id}/submit-file`, { method: 'POST', body: fd });
-    const d = await res.json();
-    if (!res.ok) alert(d.error || 'خطأ في الإرسال');
-    else { alert('تم إرسال الملف للمدير بنجاح'); setSendFileReq(null); setSendFileInput(null); load(); }
-    setSubmittingSendFile(false);
   };
 
   const openReview = async (req) => {
@@ -329,7 +546,7 @@ export default function Requests() {
     setChatText('');
     setSuggestedEntities([]);
     setReviewBankFiles([]);
-    setReviewDocsFile(null);
+    setReviewAccountFiles([]);
     setReviewTaxFiles([]);
 
     const params = new URLSearchParams(location.search);
@@ -340,21 +557,12 @@ export default function Requests() {
 
   const uploadMissingDoc = async (docId, file) => {
     if (!reviewReq || !file) return;
-    setUploadingDocId(docId);
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await authFetch(`/api/requests/${reviewReq.id}/documents/${docId}/upload`, {
-      method: 'POST',
-      body: fd,
+    await uploadRequestDocument({
+      requestId: reviewReq.id,
+      docId,
+      file,
+      refresh: () => reloadReview(reviewReq.id),
     });
-    const d = await res.json();
-    if (!res.ok) alert(d.error || 'تعذر رفع المستند');
-    else {
-      alert(d.message || 'تم رفع المستند');
-      await reloadReview(reviewReq.id);
-      await load();
-    }
-    setUploadingDocId(null);
   };
 
   const submitMissingToAdmin = async () => {
@@ -559,8 +767,12 @@ export default function Requests() {
                               <Send size={13} /> إرسال
                             </button>
                           ) : (
-                            <button onClick={() => { setSendFileReq(r); setSendFileInput(null); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100">
-                              <Send size={13} /> إرسال
+                            <button
+                              onClick={() => submitRequestPackage(r)}
+                              disabled={submittingPackageId === r.id}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100 disabled:opacity-50"
+                            >
+                              <Send size={13} /> {submittingPackageId === r.id ? 'جارٍ الإرسال...' : 'إرسال للإدارة'}
                             </button>
                           )}
                           {!isAdmin && r.status === 'missing' && (
@@ -605,7 +817,7 @@ export default function Requests() {
       {/* New Request Modal */}
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto" dir="rtl">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 my-8 p-6">
+          <div className={`bg-white rounded-2xl shadow-2xl w-full mx-4 my-8 p-6 ${newStep === 1 ? 'max-w-lg' : 'max-w-5xl'}`}>
             {newStep === 1 ? (
               <>
                 <div className="flex items-center justify-between mb-5">
@@ -613,7 +825,7 @@ export default function Requests() {
                     <h2 className="text-lg font-black text-gray-900">طلب جديد</h2>
                     {!isAdmin && <p className="text-xs text-gray-400 mt-0.5">الخطوة 1 من 2 — بيانات المنشأة</p>}
                   </div>
-                  <button onClick={() => { setShowNew(false); setNewStep(1); }} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                  <button onClick={resetNewFlow} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
                 </div>
                 <form onSubmit={createRequest} className="space-y-3">
                   <div className="col-span-2">
@@ -668,7 +880,7 @@ export default function Requests() {
                     <button type="submit" disabled={submittingNew} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60" style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}>
                       {submittingNew ? 'جارٍ الحفظ...' : 'التالي ←'}
                     </button>
-                    <button type="button" onClick={() => { setShowNew(false); setNewStep(1); }} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
+                    <button type="button" onClick={resetNewFlow} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
                   </div>
                 </form>
               </>
@@ -679,39 +891,72 @@ export default function Requests() {
                     <h2 className="text-lg font-black text-gray-900">رفع المستندات</h2>
                     <p className="text-xs text-gray-400 mt-0.5">الخطوة 2 من 2 — المرفقات (اختياري)</p>
                   </div>
-                  <button onClick={() => { setShowNew(false); setNewStep(1); setNewReqId(null); load(); }} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                  <button onClick={resetNewFlow} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
                 </div>
                 <div className="space-y-4">
-                  <div className="border border-gray-200 rounded-xl p-4">
-                    <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
-                      <Upload size={15} className="text-blue-600" /> مستندات
-                    </h3>
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                      <Upload size={20} className="text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-500">{uploadDocsFile ? uploadDocsFile.name : 'اضغط لاختيار ملف (PDF, JPG, PNG)'}</span>
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={e => setUploadDocsFile(e.target.files?.[0] || null)} />
-                    </label>
-                    {uploadDocsFile && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadDocsFile.name}</p>}
+                  <div className="border border-gray-200 rounded-2xl p-4 bg-slate-50">
+                    <div className="mb-4 flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                          <Upload size={15} className="text-blue-600" /> المستندات الأساسية
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">ارفع كل مستند في مكانه الصحيح. المستندات الشرطية موضحة داخل الاسم.</p>
+                      </div>
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-700">
+                        {(newRequestData?.documents || []).filter((document) => document.file_path).length} / {(newRequestData?.documents || []).length}
+                      </span>
+                    </div>
+                    <NamedDocumentsUploader
+                      documents={newRequestData?.documents || []}
+                      uploadingDocId={uploadingDocId}
+                      onUpload={(docId, file) => uploadRequestDocument({
+                        requestId: newReqId,
+                        docId,
+                        file,
+                        refresh: async () => {
+                          const detailData = await fetchUserRequestDetails(newReqId);
+                          setNewRequestData(detailData);
+                        },
+                      })}
+                      getFileUrl={getFileUrl}
+                      requestMeta={newRequestData || newForm}
+                    />
                   </div>
-                  <div className="border border-gray-200 rounded-xl p-4">
-                    <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
-                      <Upload size={15} className="text-purple-600" /> كشوف بنكية
-                    </h3>
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                      <Upload size={20} className="text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-500">{uploadBankFiles.length > 0 ? `${uploadBankFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={e => setUploadBankFiles(Array.from(e.target.files || []))} />
-                    </label>
-                    {uploadBankFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadBankFiles.length} ملف</p>}
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="border border-gray-200 rounded-xl p-4">
+                      <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                        <Upload size={15} className="text-purple-600" /> كشوف الحساب PDF
+                      </h3>
+                      <p className="text-xs text-gray-500 mb-3">آخر 12 شهر بصيغة PDF أو صورة واضحة.</p>
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                        <Upload size={20} className="text-gray-400 mb-1" />
+                        <span className="text-xs text-gray-500">{uploadBankFiles.length > 0 ? `${uploadBankFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
+                        <input type="file" accept={DOC_UPLOAD_ACCEPT} multiple className="hidden" onChange={e => setUploadBankFiles(Array.from(e.target.files || []))} />
+                      </label>
+                      {uploadBankFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadBankFiles.length} ملف</p>}
+                    </div>
+                    <div className="border border-gray-200 rounded-xl p-4">
+                      <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                        <Upload size={15} className="text-indigo-600" /> كشوف الحساب Excel
+                      </h3>
+                      <p className="text-xs text-gray-500 mb-3">ارفع ملف Excel أو XLS لآخر 12 شهر.</p>
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                        <Upload size={20} className="text-gray-400 mb-1" />
+                        <span className="text-xs text-gray-500">{uploadAccountFiles.length > 0 ? `${uploadAccountFiles.length} ملف محدد` : 'اضغط لاختيار ملفات Excel'}</span>
+                        <input type="file" accept={ACCOUNT_STATEMENT_ACCEPT} multiple className="hidden" onChange={e => setUploadAccountFiles(Array.from(e.target.files || []))} />
+                      </label>
+                      {uploadAccountFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadAccountFiles.length} ملف</p>}
+                    </div>
                   </div>
                   <div className="border border-gray-200 rounded-xl p-4">
                     <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
                       <Upload size={15} className="text-emerald-600" /> قوائم مالية وإقرارات
                     </h3>
+                    <p className="text-xs text-gray-500 mb-3">تشمل القوائم المالية والإقرارات الضريبية: آخر 6 فترات ربعية أو آخر 15 فترة شهرية حسب نوع الإقرار.</p>
                     <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
                       <Upload size={20} className="text-gray-400 mb-1" />
                       <span className="text-xs text-gray-500">{uploadTaxFiles.length > 0 ? `${uploadTaxFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={e => setUploadTaxFiles(Array.from(e.target.files || []))} />
+                      <input type="file" accept={DOC_UPLOAD_ACCEPT} multiple className="hidden" onChange={e => setUploadTaxFiles(Array.from(e.target.files || []))} />
                     </label>
                     {uploadTaxFiles.length > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ {uploadTaxFiles.length} ملف</p>}
                   </div>
@@ -723,7 +968,7 @@ export default function Requests() {
                     className="px-12 py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
                     style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
                   >
-                    <Send size={16} />{uploadingNew ? 'جارٍ الإرسال...' : 'إرسال'}
+                    <Send size={16} />{uploadingNew ? 'جارٍ الحفظ...' : 'حفظ المرفقات'}
                   </button>
                 </div>
               </>
@@ -816,6 +1061,23 @@ export default function Requests() {
                     </div>
                   </div>
                 )}
+                {reviewData.documents?.length > 0 && (
+                  <div>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="font-bold text-gray-700 text-sm">المستندات المطلوبة ({reviewData.documents.length})</h3>
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-700">
+                        {reviewData.documents.filter((document) => document.file_path).length} / {reviewData.documents.length}
+                      </span>
+                    </div>
+                    <NamedDocumentsUploader
+                      documents={reviewData.documents}
+                      uploadingDocId={uploadingDocId}
+                      onUpload={uploadMissingDoc}
+                      getFileUrl={getFileUrl}
+                      requestMeta={reviewData}
+                    />
+                  </div>
+                )}
                 {(reviewData.complete_file_name || reviewData.complete_file_path) && (
                   <div>
                     <h3 className="font-bold text-gray-700 text-sm mb-2">الملف الكامل</h3>
@@ -832,23 +1094,23 @@ export default function Requests() {
                 {!isAdmin && reviewData.status !== 'rejected' && (
                   <div className="border border-blue-200 rounded-xl p-4 bg-blue-50/60">
                     <h3 className="font-bold text-blue-800 text-sm mb-3 flex items-center gap-2">
-                      <Upload size={15} className="text-blue-600" /> رفع مستندات وملفات
+                      <Upload size={15} className="text-blue-600" /> رفع الكشوفات والقوائم
                     </h3>
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">مستندات</label>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">كشوف الحساب PDF</label>
                         <label className="flex items-center gap-2 w-full border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-white transition-colors">
                           <Upload size={14} className="text-gray-400 flex-shrink-0" />
-                          <span className="text-xs text-gray-500 truncate">{reviewDocsFile ? reviewDocsFile.name : 'اختر ملف (PDF, JPG, PNG)'}</span>
-                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={e => setReviewDocsFile(e.target.files?.[0] || null)} />
+                          <span className="text-xs text-gray-500 truncate">{reviewBankFiles.length > 0 ? `${reviewBankFiles.length} ملف محدد` : 'اختر ملفات PDF أو صور'}</span>
+                          <input type="file" accept={DOC_UPLOAD_ACCEPT} multiple className="hidden" onChange={e => setReviewBankFiles(Array.from(e.target.files || []))} />
                         </label>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">كشوف بنكية</label>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">كشوف الحساب Excel</label>
                         <label className="flex items-center gap-2 w-full border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-white transition-colors">
                           <Upload size={14} className="text-gray-400 flex-shrink-0" />
-                          <span className="text-xs text-gray-500 truncate">{reviewBankFiles.length > 0 ? `${reviewBankFiles.length} ملف محدد` : 'اختر ملفات متعددة'}</span>
-                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={e => setReviewBankFiles(Array.from(e.target.files || []))} />
+                          <span className="text-xs text-gray-500 truncate">{reviewAccountFiles.length > 0 ? `${reviewAccountFiles.length} ملف محدد` : 'اختر ملفات Excel'}</span>
+                          <input type="file" accept={ACCOUNT_STATEMENT_ACCEPT} multiple className="hidden" onChange={e => setReviewAccountFiles(Array.from(e.target.files || []))} />
                         </label>
                       </div>
                       <div>
@@ -856,17 +1118,26 @@ export default function Requests() {
                         <label className="flex items-center gap-2 w-full border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-white transition-colors">
                           <Upload size={14} className="text-gray-400 flex-shrink-0" />
                           <span className="text-xs text-gray-500 truncate">{reviewTaxFiles.length > 0 ? `${reviewTaxFiles.length} ملف محدد` : 'اختر ملفات متعددة'}</span>
-                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={e => setReviewTaxFiles(Array.from(e.target.files || []))} />
+                          <input type="file" accept={DOC_UPLOAD_ACCEPT} multiple className="hidden" onChange={e => setReviewTaxFiles(Array.from(e.target.files || []))} />
                         </label>
                       </div>
-                      <button
-                        onClick={submitReviewFiles}
-                        disabled={uploadingReview}
-                        className="w-full py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60"
-                        style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
-                      >
-                        <Send size={14} />{uploadingReview ? 'جارٍ الرفع...' : 'إرسال الملفات للمدير'}
-                      </button>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <button
+                          onClick={submitReviewFiles}
+                          disabled={uploadingReview}
+                          className="w-full py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60"
+                          style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
+                        >
+                          <Upload size={14} />{uploadingReview ? 'جارٍ الرفع...' : 'حفظ المرفقات'}
+                        </button>
+                        <button
+                          onClick={() => submitRequestPackage(reviewData)}
+                          disabled={submittingPackageId === reviewData.id}
+                          className="w-full py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+                        >
+                          <Send size={14} />{submittingPackageId === reviewData.id ? 'جارٍ الإرسال...' : 'إرسال للإدارة'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -916,26 +1187,10 @@ export default function Requests() {
                       <p className="text-sm text-orange-700">لا توجد قائمة نواقص مرفقة لهذا الطلب.</p>
                     ) : (
                       <div className="space-y-3">
-                        {reviewData.documents.map(doc => (
-                          <div key={doc.id} className="bg-white border border-orange-100 rounded-xl p-3">
-                            <div className="flex items-center justify-between gap-3 mb-2">
-                              <div>
-                                <p className="text-sm font-bold text-gray-800">{doc.document_name}</p>
-                                <p className="text-xs text-gray-500">الحالة: {doc.file_path ? 'تم الرفع' : 'ناقص'}</p>
-                              </div>
-                              {doc.file_name && <span className="text-xs text-blue-700 font-semibold">{doc.file_name}</span>}
-                            </div>
-                            <input
-                              type="file"
-                              onChange={e => uploadMissingDoc(doc.id, e.target.files?.[0])}
-                              className="w-full text-xs"
-                              disabled={uploadingDocId === doc.id}
-                            />
-                          </div>
-                        ))}
+                        <p className="text-sm text-orange-700">استخدم قائمة المستندات أعلاه لرفع كل نواقص الطلب، ثم أعد الإرسال للإدارة بعد اكتمال البنود المطلوبة.</p>
                         <button
                           onClick={submitMissingToAdmin}
-                          disabled={submittingMissing || reviewData.documents.some(d => !d.file_path)}
+                          disabled={submittingMissing || !reviewData.documents.some(d => d.file_path)}
                           className="w-full py-2.5 rounded-xl text-white font-bold text-sm bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
                         >
                           {submittingMissing ? 'جارٍ الإرسال...' : 'إعادة إرسال النواقص للإدارة'}
@@ -1109,38 +1364,6 @@ export default function Requests() {
                 <button type="button" onClick={() => setSendReq(null)} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-      {/* Send File Modal (non-admin) */}
-      {sendFileReq && !isAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" dir="rtl">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-lg font-black text-gray-900">إرسال ملف للمدير</h2>
-                <p className="text-blue-600 text-xs font-medium mt-0.5">{sendFileReq.company_name}</p>
-              </div>
-              <button onClick={() => { setSendFileReq(null); setSendFileInput(null); }} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-            </div>
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-              <Upload size={24} className="text-gray-400 mb-2" />
-              <span className="text-sm text-gray-500 font-medium">{sendFileInput ? sendFileInput.name : 'اضغط لاختيار الملف'}</span>
-              <span className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, ZIP</span>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.zip,.rar" className="hidden" onChange={e => setSendFileInput(e.target.files?.[0] || null)} />
-            </label>
-            {sendFileInput && <p className="text-xs text-green-600 mt-2 font-medium text-center">✓ {sendFileInput.name}</p>}
-            <div className="mt-5 flex gap-3">
-              <button
-                onClick={submitSendFile}
-                disabled={submittingSendFile || !sendFileInput}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-50"
-                style={{ background: 'linear-gradient(90deg, #065f46, #059669)' }}
-              >
-                <Send size={15} />{submittingSendFile ? 'جارٍ الإرسال...' : 'إرسال للمدير'}
-              </button>
-              <button onClick={() => { setSendFileReq(null); setSendFileInput(null); }} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
-            </div>
           </div>
         </div>
       )}

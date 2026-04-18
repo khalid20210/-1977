@@ -2,6 +2,7 @@
 const db = require('../database');
 const { adminMiddleware } = require('../middleware/authMiddleware');
 const { createNotification, notifyAdmins } = require('../services/notificationService');
+const { ensureRequestDocuments } = require('../services/requestDocuments');
 
 const router = express.Router();
 
@@ -162,6 +163,7 @@ router.get('/requests/:id', adminMiddleware, async (req, res) => {
       WHERE r.id = ?
     `).get(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
+    await ensureRequestDocuments(req.params.id);
     const [bankStatements, accountStatements, taxDocuments, documents, statusHistory] = await Promise.all([
       db.prepare('SELECT * FROM bank_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id),
       db.prepare('SELECT * FROM account_statements WHERE request_id = ? ORDER BY id').all(req.params.id),

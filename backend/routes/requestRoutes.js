@@ -6,6 +6,7 @@ const db = require('../database');
 const { authMiddleware } = require('../middleware/authMiddleware');
 const { createNotification, notifyAdmins } = require('../services/notificationService');
 const { analyzeBankStatement, analyzeDocument } = require('../services/aiService');
+const { ensureRequestDocuments } = require('../services/requestDocuments');
 
 const router = express.Router();
 
@@ -353,6 +354,8 @@ router.post('/', authMiddleware, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(company_name.trim(), entity_type || 'شركة', owner_name || null, owner_phone || null, reqId, req.user.id);
 
+    await ensureRequestDocuments(reqId);
+
     const request = await db.prepare('SELECT * FROM requests WHERE id = ?').get(reqId);
     await createNotification(req.user.id, {
       type: 'success',
@@ -389,6 +392,8 @@ router.get('/:id', authMiddleware, async (req, res) => {
     `).get(req.params.id, req.user.id, req.user.role);
 
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
+
+    await ensureRequestDocuments(req.params.id);
 
     const bankStatements = await db.prepare('SELECT * FROM bank_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
     const accountStatements = await db.prepare('SELECT * FROM account_statements WHERE request_id = ? ORDER BY uploaded_at').all(req.params.id);
@@ -672,11 +677,7 @@ router.post('/:id/select-entity', authMiddleware, async (req, res) => {
 
     const requiredDocs = JSON.parse(entity.required_documents || '[]');
 
-    // Reset documents for new entity selection
-    await db.prepare('DELETE FROM request_documents WHERE request_id = ?').run(req.params.id);
-    for (const docName of requiredDocs) {
-      await db.prepare("INSERT INTO request_documents (request_id, document_name, status) VALUES (?, ?, 'missing')").run(req.params.id, docName);
-    }
+    await ensureRequestDocuments(req.params.id, requiredDocs);
 
     await db.prepare("UPDATE requests SET funding_entity_id = ?, status = 'docs_pending', updated_at = NOW() WHERE id = ?").run(funding_entity_id, req.params.id);
 
@@ -748,8 +749,15 @@ router.post('/:id/submit-file', authMiddleware, completeUpload.single('file'), a
     const request = await db.prepare('SELECT * FROM requests WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
 
-    const filePath = req.file ? req.file.path : null;
-    const fileName = req.file ? Buffer.from(req.file.originalname, 'latin1').toString('utf8') : null;
+    const filePath = req.file ? req.file.path : request.complete_file_path || null;
+    const fileName = req.file ? Buffer.from(req.file.originalname, 'latin1').toString('utf8') : request.complete_file_name || null;
+    const submissionNote = req.file ? 'تم رفع الملف الكامل من الموظف' : 'تم إرسال المستندات المرفوعة من الموظف';
+    const notificationTitle = req.file
+      ? `تم رفع الملف الكامل لطلب ${request.company_name}`
+      : `تم إرسال مستندات طلب ${request.company_name}`;
+    const notificationBody = req.file
+      ? `${req.user.name} رفع الملف الكامل بانتظار مراجعة الإدارة.`
+      : `${req.user.name} أرسل المستندات والكشوفات المرفوعة بانتظار مراجعة الإدارة.`;
 
     await db.prepare(`
       UPDATE requests SET
@@ -761,17 +769,17 @@ router.post('/:id/submit-file', authMiddleware, completeUpload.single('file'), a
     `).run(filePath, fileName, req.params.id);
 
     await db.prepare('INSERT INTO status_history (request_id, status, note, created_by) VALUES (?, ?, ?, ?)').run(
-      req.params.id, 'file_submitted', 'تم رفع الملف الكامل من الموظف', req.user.id
+      req.params.id, 'file_submitted', submissionNote, req.user.id
     );
 
     await notifyAdmins({
       type: 'update',
-      title: `تم رفع الملف الكامل لطلب ${request.company_name}`,
-      body: `${req.user.name} رفع الملف الكامل بانتظار مراجعة الإدارة.`,
+      title: notificationTitle,
+      body: notificationBody,
       link: `/requests?view=${request.id}`,
     }, { excludeUserId: req.user.id });
 
-    res.json({ message: 'تم إرسال الملف للمدير بنجاح. سيتم مراجعته قريباً.' });
+    res.json({ message: req.file ? 'تم إرسال الملف للمدير بنجاح. سيتم مراجعته قريباً.' : 'تم إرسال الطلب بمرفقاته الحالية للمدير بنجاح.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطأ في إرسال الملف' });
