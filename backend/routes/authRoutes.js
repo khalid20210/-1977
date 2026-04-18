@@ -16,10 +16,6 @@ function normalizeEmail(value = '') {
   return String(value || '').trim().toLowerCase();
 }
 
-function normalizePhone(value = '') {
-  return String(value || '').replace(/\D/g, '');
-}
-
 function hashResetCode(code = '') {
   return crypto.createHash('sha256').update(String(code)).digest('hex');
 }
@@ -28,24 +24,18 @@ function generateResetCode() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
-async function findUserForPasswordReset(email, phone) {
+async function findUserForPasswordReset(email) {
   const normalizedEmail = normalizeEmail(email);
-  const normalizedPhone = normalizePhone(phone);
 
-  if (!normalizedEmail || !normalizedPhone || normalizedPhone.length < 9) {
+  if (!normalizedEmail) {
     return { error: 'بيانات التحقق غير صحيحة' };
   }
 
-  const user = await db.prepare('SELECT id, email, phone, status FROM users WHERE email = ?').get(normalizedEmail);
+  const user = await db.prepare('SELECT id, email, status FROM users WHERE email = ?').get(normalizedEmail);
   if (!user) return { error: 'تعذر التحقق من بيانات الحساب' };
   if (user.status === 'blocked') return { error: 'الحساب محظور. تواصل مع الإدارة.' };
 
-  const storedPhone = normalizePhone(user.phone);
-  if (!storedPhone || storedPhone !== normalizedPhone) {
-    return { error: 'تعذر التحقق من بيانات الحساب' };
-  }
-
-  return { user, normalizedEmail, normalizedPhone };
+  return { user, normalizedEmail };
 }
 
 // POST /api/auth/register
@@ -118,8 +108,8 @@ router.post('/login', async (req, res) => {
 router.post('/forgot-password/request-code', async (req, res) => {
   try {
     ensureEmailConfig();
-    const { email, phone } = req.body;
-    const result = await findUserForPasswordReset(email, phone);
+    const { email } = req.body;
+    const result = await findUserForPasswordReset(email);
     if (result.error) {
       return res.status(result.error.includes('محظور') ? 403 : 400).json({ error: result.error });
     }
@@ -153,9 +143,9 @@ router.post('/forgot-password/request-code', async (req, res) => {
 // POST /api/auth/forgot-password/verify-code
 router.post('/forgot-password/verify-code', async (req, res) => {
   try {
-    const { email, phone, code, password } = req.body;
-    if (!email || !phone || !code || !password) {
-      return res.status(400).json({ error: 'البريد والجوال والرمز وكلمة المرور الجديدة مطلوبة' });
+    const { email, code, password } = req.body;
+    if (!email || !code || !password) {
+      return res.status(400).json({ error: 'البريد والرمز وكلمة المرور الجديدة مطلوبة' });
     }
 
     if (!/^\d{4}$/.test(String(code).trim())) {
@@ -166,7 +156,7 @@ router.post('/forgot-password/verify-code', async (req, res) => {
       return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
     }
 
-    const result = await findUserForPasswordReset(email, phone);
+    const result = await findUserForPasswordReset(email);
     if (result.error) {
       return res.status(result.error.includes('محظور') ? 403 : 400).json({ error: result.error });
     }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock, Mail, Phone, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Lock, Mail, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -9,7 +9,6 @@ export default function ForgotPassword() {
   const [step, setStep] = React.useState('request');
   const [form, setForm] = React.useState({
     email: '',
-    phone: '',
     code: '',
     password: '',
     confirmPassword: '',
@@ -34,8 +33,8 @@ export default function ForgotPassword() {
     event.preventDefault();
     resetMessages();
 
-    if (!form.email.trim() || !form.phone.trim()) {
-      setError('أدخل البريد الإلكتروني ورقم الجوال أولاً');
+    if (!form.email.trim()) {
+      setError('أدخل البريد الإلكتروني أولاً');
       return;
     }
 
@@ -46,7 +45,6 @@ export default function ForgotPassword() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email.trim().toLowerCase(),
-          phone: form.phone.trim(),
         }),
       });
 
@@ -76,7 +74,7 @@ export default function ForgotPassword() {
     event.preventDefault();
     resetMessages();
 
-    if (!form.email.trim() || !form.phone.trim() || !form.code.trim() || !form.password || !form.confirmPassword) {
+    if (!form.email.trim() || !form.code.trim() || !form.password || !form.confirmPassword) {
       setError('أكمل الحقول المطلوبة أولاً');
       return;
     }
@@ -98,7 +96,6 @@ export default function ForgotPassword() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email.trim().toLowerCase(),
-          phone: form.phone.trim(),
           code: form.code.trim(),
           password: form.password,
         }),
@@ -118,7 +115,7 @@ export default function ForgotPassword() {
       }
 
       setSuccess(data.message || 'تم تحديث كلمة المرور بنجاح');
-      setForm({ email: '', phone: '', code: '', password: '', confirmPassword: '' });
+      setForm({ email: '', code: '', password: '', confirmPassword: '' });
       setStep('request');
       window.setTimeout(() => navigate('/login'), 1800);
     } catch (_) {
@@ -150,13 +147,13 @@ export default function ForgotPassword() {
             نسيت كلمة السر؟
           </h1>
           <p className="text-blue-200 text-base leading-8 max-w-lg">
-            أدخل البريد الإلكتروني والجوال المسجلين في حسابك، وسنرسل لك رمز تحقق عشوائي من 4 أرقام إلى البريد الإلكتروني.
+            أدخل البريد الإلكتروني المسجل في حسابك، وسنرسل لك رمز تحقق عشوائي من 4 أرقام إلى البريد الإلكتروني.
           </p>
           <div className="mt-8 space-y-3 max-w-xl">
             {[
               'يتم إرسال رمز عشوائي من 4 أرقام إلى البريد الإلكتروني المسجل.',
               'صلاحية الرمز 10 دقائق فقط مع عدد محاولات محدود.',
-              'إذا تغيّر رقم الجوال أو البريد سابقاً فسيحتاج الحساب إلى تحديث من الإدارة.'
+              'إذا كان البريد غير صحيح أو الحساب محظوراً فلن يكتمل الاسترجاع.'
             ].map((item) => (
               <div key={item} className="flex items-center gap-3 rounded-2xl border border-sky-400/20 bg-white/5 px-4 py-3 text-sm text-blue-100 backdrop-blur-sm">
                 <ShieldCheck size={18} className="text-sky-300" />
@@ -176,7 +173,7 @@ export default function ForgotPassword() {
           <p className="text-center text-blue-600 text-xs font-bold tracking-widest mb-2">RESET PASSWORD</p>
           <h2 className="text-3xl font-black text-gray-900 mb-1 text-center">{step === 'request' ? 'إرسال رمز التحقق' : 'التحقق من الرمز'}</h2>
           <p className="text-center text-gray-400 text-sm mb-8">
-            {step === 'request' ? 'استخدم البريد والجوال المسجلين في الحساب' : 'أدخل الرمز المرسل إلى بريدك ثم عيّن كلمة المرور الجديدة'}
+            {step === 'request' ? 'استخدم البريد المسجل في الحساب' : 'أدخل الرمز المرسل إلى بريدك ثم عيّن كلمة المرور الجديدة'}
           </p>
 
           {error && (
@@ -202,21 +199,6 @@ export default function ForgotPassword() {
                   placeholder="example@email.com"
                   value={form.email}
                   onChange={updateField('email')}
-                  className="w-full border border-gray-200 rounded-xl py-3 pr-10 pl-4 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">رقم الجوال</label>
-              <div className="relative">
-                <Phone size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  required
-                  placeholder="05xxxxxxxx"
-                  value={form.phone}
-                  onChange={updateField('phone')}
                   className="w-full border border-gray-200 rounded-xl py-3 pr-10 pl-4 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 />
               </div>
