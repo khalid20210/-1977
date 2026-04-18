@@ -19,8 +19,6 @@ import Eligibility from './pages/Eligibility';
 import Commissions from './pages/Commissions';
 import Establishments from './pages/Establishments';
 
-const RUNTIME_RECOVERY_KEY = 'jenanbiz-runtime-recovery';
-
 class RuntimeRecoveryBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -32,25 +30,10 @@ class RuntimeRecoveryBoundary extends React.Component {
   }
 
   componentDidCatch(error) {
-    const alreadyReloaded = sessionStorage.getItem(RUNTIME_RECOVERY_KEY) === '1';
-    const message = String(error?.message || '');
-    const shouldRetry = !alreadyReloaded && (
-      error?.name === 'ReferenceError' ||
-      message.includes('is not defined') ||
-      message.includes('Failed to fetch dynamically imported module')
-    );
-
-    if (shouldRetry) {
-      sessionStorage.setItem(RUNTIME_RECOVERY_KEY, '1');
-      window.location.reload();
-      return;
-    }
-
-    sessionStorage.removeItem(RUNTIME_RECOVERY_KEY);
+    console.error('RuntimeRecoveryBoundary caught an error:', error);
   }
 
   handleRefresh = () => {
-    sessionStorage.removeItem(RUNTIME_RECOVERY_KEY);
     window.location.reload();
   };
 

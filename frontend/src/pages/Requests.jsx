@@ -827,7 +827,7 @@ export default function Requests() {
       {/* New Request Modal */}
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto" dir="rtl">
-          <div className={`bg-white rounded-2xl shadow-2xl w-full mx-4 my-8 p-6 ${newStep === 1 ? 'max-w-lg' : 'max-w-6xl'}`}>
+          <div className={`bg-white rounded-2xl shadow-2xl w-full mx-3 my-4 sm:mx-4 sm:my-8 p-4 sm:p-6 ${newStep === 1 ? 'max-w-2xl' : 'max-w-6xl'}`}>
             {newStep === 1 ? (
               <>
                 <div className="flex items-center justify-between mb-5">
@@ -837,12 +837,12 @@ export default function Requests() {
                   </div>
                   <button onClick={resetNewFlow} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
                 </div>
-                <form onSubmit={createRequest} className="space-y-3">
-                  <div className="col-span-2">
+                <form onSubmit={createRequest} className="space-y-4">
+                  <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المنشأة *</label>
                     <input required value={newForm.company_name} onChange={e => setNewForm({ ...newForm, company_name: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المالك</label>
                       <input value={newForm.owner_name} onChange={e => setNewForm({ ...newForm, owner_name: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -866,9 +866,9 @@ export default function Requests() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-2">نوع التمويل</label>
-                    <div className="grid grid-cols-4 gap-1.5">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {FUNDING_TYPES.map(t => (
-                        <button key={t} type="button" onClick={() => setNewForm({ ...newForm, funding_type: t })} className={`px-2 py-1.5 rounded-lg text-xs font-medium text-center transition-colors ${newForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
+                        <button key={t} type="button" onClick={() => setNewForm({ ...newForm, funding_type: t })} className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-colors ${newForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
                       ))}
                     </div>
                   </div>
@@ -881,16 +881,11 @@ export default function Requests() {
                       </select>
                     </div>
                   )}
-                  {!isAdmin && (
-                    <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-2.5 text-xs text-blue-700 font-medium">
-                      سيتم حفظ بيانات المنشأة فوراً في سجل المنشآت عند النقر على التالي
-                    </div>
-                  )}
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
                     <button type="submit" disabled={submittingNew} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 disabled:opacity-60" style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}>
                       {submittingNew ? 'جارٍ الحفظ...' : 'التالي ←'}
                     </button>
-                    <button type="button" onClick={resetNewFlow} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">إلغاء</button>
+                    <button type="button" onClick={resetNewFlow} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 sm:w-auto">إلغاء</button>
                   </div>
                 </form>
               </>
