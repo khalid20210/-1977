@@ -294,7 +294,7 @@ router.post('/eligibility-check', authMiddleware, async (req, res) => {
 router.get('/partners-list', authMiddleware, async (req, res) => {
   try {
     const partners = await db.prepare(`
-      SELECT id, name, phone, partner_type FROM users
+      SELECT id, name, phone, role, partner_type FROM users
       WHERE role = 'partner' AND status = 'approved'
       ORDER BY name
     `).all();

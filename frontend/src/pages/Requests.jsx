@@ -53,6 +53,13 @@ const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية
 const DOC_UPLOAD_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp';
 const ACCOUNT_STATEMENT_ACCEPT = '.xlsx,.xls';
 
+function formatPartnerLabel(partner) {
+  const name = String(partner?.name || '').trim();
+  const descriptor = String(partner?.partner_type || partner?.role || '').trim();
+  if (!descriptor) return name || 'بدون اسم';
+  return `${name || 'بدون اسم'} (${descriptor})`;
+}
+
 function getDocumentGuidance(documentName, requestMeta = {}) {
   const entityType = String(requestMeta?.entity_type || '').trim();
   const ownershipType = String(requestMeta?.ownership_type || '').trim();
@@ -870,7 +877,7 @@ export default function Requests() {
                       <label className="block text-xs font-semibold text-gray-600 mb-1">الموظف / الشريك</label>
                       <select value={newForm.referred_by_id} onChange={e => setNewForm({ ...newForm, referred_by_id: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">اختر...</option>
-                        {partners.map(p => <option key={p.id} value={p.id}>{p.name} ({p.role})</option>)}
+                        {partners.map(p => <option key={p.id} value={p.id}>{formatPartnerLabel(p)}</option>)}
                       </select>
                     </div>
                   )}
