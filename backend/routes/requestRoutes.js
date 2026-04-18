@@ -93,6 +93,7 @@ async function checkEligibility(
   const successProbability = debtHealthy ? 85 : 65;
   const estimatedFundingAmount = Math.round((Number(totalPos) > 0 ? Number(totalPos) : annualRevenue) * 0.6);
   const minAgeMonths = isForeign ? 36 : 24;
+  const foreignRevenueFastTrackEligible = isForeign && annualRevenue >= 3000000 && recordAgeMonths >= 18;
   const tips = [];
   const matchedRules = [];
   let eligibleEntities = [];
@@ -106,7 +107,18 @@ async function checkEligibility(
   const movementEligible = combinedMovement >= 3000000 && recordAgeMonths >= minAgeMonths;
 
   if (fundingType === 'نقاط بيع') {
-    if (rajhiSolePosEligible || rajhiSoleRevenueEligible) {
+    if (foreignRevenueFastTrackEligible) {
+      isEligible = true;
+      matchedRules.push('منشأة أجنبية أو مستثمر بإيرادات 3 مليون فأكثر');
+      eligibleEntities = [
+        pickEntity(
+          entities,
+          [isRajhi ? 'راجحي' : 'الأولى', 'راجحي', 'الأولى'],
+          isRajhi ? 'مصرف الراجحي' : 'تمويل نقاط بيع أو كاش',
+          'الحالة الاستثنائية للمنشأة الأجنبية أو المستثمر: إيرادات 3,000,000 ر.س فأكثر مع عمر سجل 18 شهراً فأكثر يمكن أن تمشي في الكاش أو نقاط البيع.'
+        ),
+      ];
+    } else if (rajhiSolePosEligible || rajhiSoleRevenueEligible) {
       isEligible = true;
       matchedRules.push('مؤسسة أو شركة شخص واحد سعودية على الراجحي');
       eligibleEntities = [
@@ -146,14 +158,28 @@ async function checkEligibility(
       if (recordAgeMonths < minAgeMonths && !(isRajhi && entityClass === 'sole' && !isForeign)) {
         tips.push(`عمر السجل الحالي ${recordAgeMonths} شهر، بينما المطلوب ${minAgeMonths} شهر لهذه الحالة.`);
       }
-      if (isForeign && recordAgeMonths < 36) {
-        tips.push('للمستثمر أو المنشأة الأجنبية: عمر السجل المطلوب 36 شهراً في نقاط البيع.');
+      if (isForeign && annualRevenue < 3000000 && recordAgeMonths < 36) {
+        tips.push('للمستثمر أو المنشأة الأجنبية في نقاط البيع: العمر المعتاد 36 شهراً، ويستثنى من ذلك من لديه إيرادات 3,000,000 ر.س فأكثر بعمر 18 شهراً فأعلى.');
+      }
+      if (isForeign && annualRevenue < 3000000) {
+        tips.push('للاستفادة من الاستثناء الأجنبي في الكاش أو نقاط البيع: يجب أن تكون الإيرادات 3,000,000 ر.س فأكثر مع عمر سجل 18 شهراً على الأقل.');
       }
     }
   }
 
   if (!isEligible && (fundingType !== 'نقاط بيع' || combinedMovement > 0)) {
-    if (movementEligible) {
+    if (fundingType === 'كاش' && foreignRevenueFastTrackEligible) {
+      isEligible = true;
+      matchedRules.push('منشأة أجنبية أو مستثمر كاش بإيرادات 3 مليون فأكثر');
+      eligibleEntities = [
+        pickEntity(
+          entities,
+          [isRajhi ? 'راجحي' : 'الأولى', 'راجحي', 'الأولى'],
+          isRajhi ? 'مصرف الراجحي' : 'تمويل كاش',
+          'الحالة الاستثنائية للمنشأة الأجنبية أو المستثمر في الكاش: إيرادات 3,000,000 ر.س فأكثر مع عمر سجل 18 شهراً فأكثر.'
+        ),
+      ];
+    } else if (movementEligible) {
       isEligible = true;
       matchedRules.push(isRajhi ? 'حركة حساب إيداع وتحويل على الراجحي' : 'حركة حساب إيداع وتحويل خارج الراجحي');
       eligibleEntities = [
@@ -167,6 +193,9 @@ async function checkEligibility(
         ),
       ];
     } else {
+      if (fundingType === 'كاش' && isForeign && !foreignRevenueFastTrackEligible) {
+        tips.push('في الكاش للمستثمر أو المنشأة الأجنبية: يمكن قبول الحالة إذا كانت الإيرادات 3,000,000 ر.س فأكثر وعمر السجل 18 شهراً على الأقل.');
+      }
       if (combinedMovement < 3000000) {
         tips.push('في تمويل الإيداع والتحويل: نوصي برفع حركة الحساب إلى 3,000,000 ر.س فأكثر لتحسين الأهلية.');
       }
