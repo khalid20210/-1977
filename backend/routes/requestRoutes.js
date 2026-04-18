@@ -39,6 +39,11 @@ const accountUpload = multer({ storage: makeStorage('account-statements'), fileF
   cb(new Error('نوع الملف غير مدعوم. المسموح: XLSX, XLS'));
 }, limits: { fileSize: 25 * 1024 * 1024 } });
 const taxUpload = multer({ storage: makeStorage('tax-documents'), fileFilter, limits: { fileSize: 25 * 1024 * 1024 } });
+const chatAttachmentUpload = multer({ storage: makeStorage('chat-attachments'), fileFilter: (req, file, cb) => {
+  const allowed = /jpeg|jpg|png|pdf|webp|xlsx|xls|doc|docx/;
+  if (allowed.test(path.extname(file.originalname).toLowerCase().slice(1))) return cb(null, true);
+  cb(new Error('نوع الملف غير مدعوم. المسموح: PDF, JPG, PNG, WEBP, XLSX, XLS, DOC, DOCX'));
+}, limits: { fileSize: 20 * 1024 * 1024 } });
 
 function normalizeText(value = '') {
   return String(value).trim().toLowerCase();
@@ -68,6 +73,76 @@ function decodeUploadedFileName(originalName = '') {
   } catch (error) {
     return fallbackName;
   }
+}
+
+function parseObjectField(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (!value) return {};
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function normalizeApplicantCategory(value = '') {
+  const rawValue = String(value || '').trim();
+  if (['مالك منشأة', 'صاحب منشأة', 'منشأة'].includes(rawValue)) return 'مالك منشأة';
+  if (['موظف', 'موظفة'].includes(rawValue)) return 'موظف';
+  if (['فرد', 'فردي', 'فرد مستقل'].includes(rawValue)) return 'فرد';
+  return rawValue;
+}
+
+function resolveRequestPrimaryName(body = {}, productDetails = {}) {
+  const explicitName = String(body.company_name || '').trim();
+  if (explicitName) return explicitName;
+
+  const fundingType = String(body.funding_type || '').trim();
+  const applicantCategory = normalizeApplicantCategory(productDetails.applicant_category);
+
+  if (fundingType === 'تمويل شخصي') {
+    return String(productDetails.employee_name || body.owner_name || '').trim();
+  }
+
+  if (['عقار', 'رهن'].includes(fundingType)) {
+    if (applicantCategory === 'مالك منشأة') {
+      return String(productDetails.business_name || body.owner_name || '').trim();
+    }
+    return String(productDetails.applicant_name || productDetails.employee_name || body.owner_name || '').trim();
+  }
+
+  return String(productDetails.business_name || body.owner_name || '').trim();
+}
+
+function resolveOwnerName(body = {}, productDetails = {}) {
+  const explicitOwner = String(body.owner_name || '').trim();
+  if (explicitOwner) return explicitOwner;
+
+  const fundingType = String(body.funding_type || '').trim();
+  const applicantCategory = normalizeApplicantCategory(productDetails.applicant_category);
+
+  if (fundingType === 'تمويل شخصي') {
+    return String(productDetails.employee_name || '').trim() || null;
+  }
+
+  if (['عقار', 'رهن'].includes(fundingType)) {
+    if (applicantCategory === 'مالك منشأة') {
+      return String(productDetails.owner_name || productDetails.applicant_name || '').trim() || null;
+    }
+    return String(productDetails.applicant_name || productDetails.employee_name || '').trim() || null;
+  }
+
+  return null;
+}
+
+function parseRequestRow(request = null) {
+  if (!request) return request;
+  return {
+    ...request,
+    product_details: parseObjectField(request.product_details),
+  };
 }
 
 function isRajhiBank(bankName = '') {
@@ -111,6 +186,12 @@ async function checkEligibility(
   hasSimahIssues = false,
   hasServiceStop = false,
   personalNationality = 'سعودي',
+  applicantCategory = '',
+  propertyValue = 0,
+  monthlyIncome = 0,
+  hasDownPayment = false,
+  downPaymentAmount = 0,
+  hasPropertyTitle = false,
 ) {
   const entities = await db.prepare('SELECT * FROM funding_entities WHERE is_active = 1 ORDER BY priority DESC').all();
   const isRajhi = isRajhiBank(bankName);
@@ -131,6 +212,10 @@ async function checkEligibility(
   let isEligible = false;
   const salaryAmount = Number(personalSalary) || 0;
   const personalDebtRatio = salaryAmount > 0 ? Math.round((debtAmount / salaryAmount) * 100) : 0;
+  const normalizedApplicantCategory = normalizeApplicantCategory(applicantCategory);
+  const propertyAmount = Number(propertyValue) || 0;
+  const monthlyIncomeAmount = Math.max(Number(monthlyIncome) || 0, salaryAmount || 0);
+  const downPaymentValue = Number(downPaymentAmount) || 0;
 
   if (fundingType === 'تمويل شخصي') {
     const isSaudiCitizen = String(personalNationality || '').trim() === 'سعودي';
@@ -180,6 +265,109 @@ async function checkEligibility(
       guaranteeNote: isEligible
         ? 'الحالة مستوفية لشروط التمويل الشخصي الأساسية.'
         : 'الحالة لا تستوفي شروط التمويل الشخصي الأساسية حالياً.',
+    };
+  }
+
+  if (fundingType === 'عقار' || fundingType === 'رهن') {
+    const isMortgageFunding = fundingType === 'رهن';
+    const propertyMinimum = isMortgageFunding ? 250000 : 200000;
+    const employeeIncomeMinimum = isMortgageFunding ? 5000 : 5000;
+    const individualIncomeMinimum = isMortgageFunding ? 4000 : 5000;
+    const businessRevenueMinimum = 500000;
+    const titleReady = isMortgageFunding ? hasPropertyTitle : true;
+    const hasSufficientDownPayment = isMortgageFunding ? true : (hasDownPayment && downPaymentValue >= propertyAmount * 0.1);
+    const estimatedRealEstateFunding = Math.max(0, Math.round(propertyAmount - downPaymentValue));
+
+    if (!propertyAmount || propertyAmount < propertyMinimum) {
+      tips.push(`قيمة ${isMortgageFunding ? 'العقار أو أصل الرهن' : 'العقار'} يجب أن تبدأ من ${propertyMinimum.toLocaleString('ar-SA')} ر.س على الأقل لهذا المسار.`);
+    }
+
+    if (normalizedApplicantCategory === 'مالك منشأة') {
+      const revenueEligible = annualRevenue >= businessRevenueMinimum;
+      isEligible = propertyAmount >= propertyMinimum && revenueEligible && titleReady && hasSufficientDownPayment;
+
+      if (isEligible) {
+        matchedRules.push(isMortgageFunding ? 'رهن لمالك منشأة بعقار جاهز' : 'عقار لمالك منشأة بدخل نشاط كافٍ');
+        eligibleEntities = [
+          pickEntity(
+            entities,
+            [isMortgageFunding ? 'رهن' : 'عقار', 'عقاري', 'تمويل عقاري'],
+            isMortgageFunding ? 'تمويل رهن عقاري' : 'تمويل عقاري',
+            isMortgageFunding
+              ? 'الحالة مناسبة مبدئياً لمسار الرهن لمالك منشأة مع عقار جاهز ومستندات دخل النشاط.'
+              : 'الحالة مناسبة مبدئياً لمسار العقار لمالك منشأة عند توفر دخل النشاط والدفعة الأولى.'
+          ),
+        ];
+      } else {
+        if (!revenueEligible) tips.push(`لمسار مالك المنشأة نحتاج دخلاً للنشاط يبدأ من ${businessRevenueMinimum.toLocaleString('ar-SA')} ر.س تقريباً سنوياً أو ما يثبت القدرة المالية.`);
+        if (isMortgageFunding && !titleReady) tips.push('في مسار الرهن يجب أن تكون بيانات العقار أو الصك جاهزة للمراجعة الأولية.');
+        if (!isMortgageFunding && !hasSufficientDownPayment) tips.push('في التمويل العقاري لمالك المنشأة يفضّل توفر دفعة أولى لا تقل عن 10% من قيمة العقار.');
+      }
+    } else if (normalizedApplicantCategory === 'فرد') {
+      const incomeEligible = monthlyIncomeAmount >= individualIncomeMinimum;
+      isEligible = propertyAmount >= propertyMinimum && incomeEligible && titleReady && hasSufficientDownPayment;
+
+      if (isEligible) {
+        matchedRules.push(isMortgageFunding ? 'رهن لفرد بدخل شهري كافٍ' : 'عقار لفرد بدخل شهري كافٍ');
+        eligibleEntities = [
+          pickEntity(
+            entities,
+            [isMortgageFunding ? 'رهن' : 'عقار', 'عقاري', 'تمويل عقاري'],
+            isMortgageFunding ? 'تمويل رهن عقاري' : 'تمويل عقاري',
+            isMortgageFunding
+              ? 'الحالة مناسبة مبدئياً للرهن لفرد مع عقار جاهز ورقم دخل مقبول.'
+              : 'الحالة مناسبة مبدئياً لشراء عقار لفرد مع دخل مقبول ودفعة أولى.'
+          ),
+        ];
+      } else {
+        if (!incomeEligible) tips.push(`للفرد نحتاج دخلاً شهرياً يبدأ من ${individualIncomeMinimum.toLocaleString('ar-SA')} ر.س تقريباً لهذا المسار.`);
+        if (isMortgageFunding && !titleReady) tips.push('في الرهن للفرد يجب توفر صك العقار أو بياناته الأساسية قبل التقديم.');
+        if (!isMortgageFunding && !hasSufficientDownPayment) tips.push('في التمويل العقاري للفرد يفضّل وجود دفعة أولى بحد أدنى 10% من قيمة العقار.');
+      }
+    } else {
+      const salaryEligible = salaryAmount >= employeeIncomeMinimum;
+      isEligible = propertyAmount >= propertyMinimum && salaryEligible && titleReady && hasSufficientDownPayment;
+
+      if (isEligible) {
+        matchedRules.push(isMortgageFunding ? 'رهن لموظف براتب كافٍ' : 'عقار لموظف براتب ودفعة أولى');
+        eligibleEntities = [
+          pickEntity(
+            entities,
+            [isMortgageFunding ? 'رهن' : 'عقار', 'عقاري', 'تمويل عقاري'],
+            isMortgageFunding ? 'تمويل رهن عقاري' : 'تمويل عقاري',
+            isMortgageFunding
+              ? 'الحالة مناسبة مبدئياً للرهن لموظف مع عقار جاهز وراتب كافٍ.'
+              : 'الحالة مناسبة مبدئياً لشراء عقار لموظف براتب كافٍ ودفعة أولى.'
+          ),
+        ];
+      } else {
+        if (!salaryEligible) tips.push(`للموظف نحتاج راتباً شهرياً يبدأ من ${employeeIncomeMinimum.toLocaleString('ar-SA')} ر.س تقريباً لهذا المسار.`);
+        if (isMortgageFunding && !titleReady) tips.push('في الرهن للموظف يجب توفر صك العقار أو بياناته الأساسية.');
+        if (!isMortgageFunding && !hasSufficientDownPayment) tips.push('في التمويل العقاري للموظف يفضّل وجود دفعة أولى لا تقل عن 10% من قيمة العقار.');
+      }
+    }
+
+    return {
+      eligible: isEligible,
+      entities: isEligible ? eligibleEntities : [],
+      types: isEligible ? [fundingType] : [],
+      tips,
+      matchedRules,
+      annualRevenue: normalizedApplicantCategory === 'مالك منشأة' ? annualRevenue : monthlyIncomeAmount,
+      combinedMovement: 0,
+      interestRateMin: 4.5,
+      interestRateMax: 9.5,
+      interestRateLabel: '4.5% - 9.5%',
+      estimatedFundingAmount: estimatedRealEstateFunding,
+      debtAmount,
+      debtRatio: normalizedApplicantCategory === 'مالك منشأة' ? debtRatio : personalDebtRatio,
+      debtHealthy: normalizedApplicantCategory === 'مالك منشأة' ? debtHealthy : (monthlyIncomeAmount > 0 ? debtAmount <= monthlyIncomeAmount * 0.45 : true),
+      successProbability: isEligible ? (titleReady ? 82 : 70) : 0,
+      profitRatio: Number(profitRatio) || 0,
+      needsCollateral: false,
+      guaranteeNote: isMortgageFunding
+        ? 'المراجعة النهائية للرهن تعتمد على سلامة بيانات العقار ونسبة التمويل إلى قيمة الأصل.'
+        : 'المراجعة النهائية للتمويل العقاري تعتمد على قيمة العقار والدفعة الأولى والقدرة المالية.',
     };
   }
 
@@ -358,6 +546,8 @@ router.post('/eligibility-check', authMiddleware, async (req, res) => {
       recordAgeMonths = 0, ownershipType = 'سعودي', entityType = 'شركة',
       liabilitiesAmount = 0, profitRatio = 0,
       personalSalary = 0, hasSimahIssues = false, hasServiceStop = false, personalNationality = 'سعودي',
+      applicantCategory = '', propertyValue = 0, monthlyIncome = 0,
+      hasDownPayment = false, downPaymentAmount = 0, hasPropertyTitle = false,
     } = req.body;
 
     const result = await checkEligibility(
@@ -365,7 +555,9 @@ router.post('/eligibility-check', authMiddleware, async (req, res) => {
       Number(months), fundingType, bankName,
       Number(recordAgeMonths), ownershipType, entityType,
       Number(liabilitiesAmount), Number(profitRatio),
-      Number(personalSalary), Boolean(hasSimahIssues), Boolean(hasServiceStop), personalNationality
+      Number(personalSalary), Boolean(hasSimahIssues), Boolean(hasServiceStop), personalNationality,
+      applicantCategory, Number(propertyValue), Number(monthlyIncome),
+      Boolean(hasDownPayment), Number(downPaymentAmount), Boolean(hasPropertyTitle)
     );
 
     res.json(result);
@@ -408,7 +600,7 @@ router.get('/', authMiddleware, async (req, res) => {
       WHERE r.user_id = ?
       ORDER BY r.updated_at DESC
     `).all(req.user.id);
-    res.json(requests);
+    res.json((requests || []).map(parseRequestRow));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطأ في استرجاع الطلبات' });
@@ -418,9 +610,12 @@ router.get('/', authMiddleware, async (req, res) => {
 // POST /api/requests
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { funding_type, company_name, entity_type, ownership_type, owners_count, owner_name, owner_phone, referred_by_id } = req.body;
-    if (!company_name || !company_name.trim()) {
-      return res.status(400).json({ error: 'اسم الشركة / المؤسسة مطلوب' });
+    const { funding_type, entity_type, ownership_type, owners_count, owner_phone, referred_by_id } = req.body;
+    const productDetails = parseObjectField(req.body?.product_details);
+    const requestName = resolveRequestPrimaryName(req.body, productDetails);
+    const ownerName = resolveOwnerName(req.body, productDetails);
+    if (!requestName) {
+      return res.status(400).json({ error: 'أكمل الاسم الأساسي للطلب قبل المتابعة' });
     }
     let partnerId = null;
     if (referred_by_id) {
@@ -428,33 +623,46 @@ router.post('/', authMiddleware, async (req, res) => {
       if (partner) partnerId = partner.id;
     }
     const result = await db.prepare(`
-      INSERT INTO requests (user_id, funding_type, company_name, entity_type, ownership_type, owners_count, owner_name, owner_phone, referred_by_id, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')
-    `).run(req.user.id, funding_type || 'نقاط بيع', company_name.trim(), entity_type || 'شركة', ownership_type || 'سعودي', owners_count || 'شخص واحد', owner_name || null, owner_phone || null, partnerId);
+      INSERT INTO requests (user_id, funding_type, company_name, entity_type, ownership_type, owners_count, owner_name, owner_phone, referred_by_id, product_details, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')
+    `).run(
+      req.user.id,
+      funding_type || 'نقاط بيع',
+      requestName,
+      entity_type || 'شركة',
+      ownership_type || 'سعودي',
+      owners_count || 'شخص واحد',
+      ownerName,
+      owner_phone || null,
+      partnerId,
+      JSON.stringify(productDetails || {})
+    );
 
     const reqId = result.lastInsertRowid;
 
     await db.prepare(`
       INSERT INTO companies (company_name, entity_type, owner_name, owner_phone, request_id, user_id)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(company_name.trim(), entity_type || 'شركة', owner_name || null, owner_phone || null, reqId, req.user.id);
+    `).run(requestName, entity_type || 'شركة', ownerName, owner_phone || null, reqId, req.user.id);
 
     await ensureRequestDocuments(reqId, {
+      funding_type: funding_type || 'نقاط بيع',
       entity_type: entity_type || 'شركة',
       ownership_type: ownership_type || 'سعودي',
+      product_details: productDetails,
     });
 
-    const request = await db.prepare('SELECT * FROM requests WHERE id = ?').get(reqId);
+    const request = parseRequestRow(await db.prepare('SELECT * FROM requests WHERE id = ?').get(reqId));
     await createNotification(req.user.id, {
       type: 'success',
-      title: `تم إنشاء طلب ${company_name.trim()}`,
+      title: `تم إنشاء طلب ${requestName}`,
       body: 'تم استلام طلبك بنجاح وهو الآن بانتظار المراجعة.',
       link: `/requests?view=${reqId}`,
     });
     await notifyAdmins({
       type: 'general',
       title: 'طلب جديد بانتظار المراجعة',
-      body: `${req.user.name} أضاف طلب ${company_name.trim()}`,
+      body: `${req.user.name} أضاف طلب ${requestName}`,
       link: `/requests?view=${reqId}`,
     });
     res.status(201).json(request);
@@ -497,7 +705,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
     let analysisResult = {};
     try { analysisResult = JSON.parse(request.analysis_result || '{}'); } catch (e) {}
 
-    res.json({ ...request, analysis_result: analysisResult, bank_statements: bankStatements, account_statements: accountStatements, tax_documents: taxDocuments, documents, status_history: statusHistory });
+    res.json({ ...parseRequestRow(request), analysis_result: analysisResult, bank_statements: bankStatements, account_statements: accountStatements, tax_documents: taxDocuments, documents, status_history: statusHistory });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطأ في استرجاع الطلب' });
@@ -512,7 +720,7 @@ router.get('/:id/messages', authMiddleware, async (req, res) => {
     if (!canAccessRequestChat(request, req.user)) return res.status(403).json({ error: 'غير مصرح' });
 
     const messages = await db.prepare(`
-      SELECT rm.id, rm.request_id, rm.sender_id, rm.message, rm.created_at,
+      SELECT rm.id, rm.request_id, rm.sender_id, rm.message, rm.attachment_path, rm.attachment_name, rm.created_at,
              u.name as sender_name, u.role as sender_role
       FROM request_messages rm
       LEFT JOIN users u ON u.id = rm.sender_id
@@ -528,20 +736,22 @@ router.get('/:id/messages', authMiddleware, async (req, res) => {
 });
 
 // POST /api/requests/:id/messages — send internal chat message
-router.post('/:id/messages', authMiddleware, async (req, res) => {
+router.post('/:id/messages', authMiddleware, chatAttachmentUpload.single('file'), async (req, res) => {
   try {
     const request = await getRequestForAccess(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     if (!canAccessRequestChat(request, req.user)) return res.status(403).json({ error: 'غير مصرح' });
 
     const message = String(req.body?.message || '').trim();
-    if (!message) return res.status(400).json({ error: 'نص الرسالة مطلوب' });
+    const attachmentPath = req.file ? req.file.path : null;
+    const attachmentName = req.file ? decodeUploadedFileName(req.file.originalname) : null;
+    if (!message && !attachmentPath) return res.status(400).json({ error: 'اكتب رسالة أو أرفق ملفاً' });
 
-    const r = await db.prepare('INSERT INTO request_messages (request_id, sender_id, message) VALUES (?, ?, ?)')
-      .run(req.params.id, req.user.id, message);
+    const r = await db.prepare('INSERT INTO request_messages (request_id, sender_id, message, attachment_path, attachment_name) VALUES (?, ?, ?, ?, ?)')
+      .run(req.params.id, req.user.id, message || '', attachmentPath, attachmentName);
 
     const created = await db.prepare(`
-      SELECT rm.id, rm.request_id, rm.sender_id, rm.message, rm.created_at,
+      SELECT rm.id, rm.request_id, rm.sender_id, rm.message, rm.attachment_path, rm.attachment_name, rm.created_at,
              u.name as sender_name, u.role as sender_role
       FROM request_messages rm
       LEFT JOIN users u ON u.id = rm.sender_id
@@ -552,14 +762,14 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
       await createNotification(request.user_id, {
         type: 'message',
         title: `رسالة جديدة على طلب ${request.company_name}`,
-        body: message,
+        body: message || `تم إرفاق ملف: ${attachmentName}`,
         link: `/requests?view=${request.id}`,
       });
     } else {
       await notifyAdmins({
         type: 'message',
         title: `رسالة جديدة من ${req.user.name}`,
-        body: `${request.company_name}: ${message}`,
+        body: `${request.company_name}: ${message || `تم إرفاق ملف: ${attachmentName}`}`,
         link: `/requests?view=${request.id}`,
       }, { excludeUserId: req.user.id });
     }
@@ -939,8 +1149,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (req.user.role !== 'admin' && request.user_id !== req.user.id) {
       return res.status(403).json({ error: 'غير مصرح' });
     }
-    const { company_name, owner_name, owner_phone, entity_type, ownership_type, funding_type, referred_by_id } = req.body;
-    if (!company_name || !company_name.trim()) return res.status(400).json({ error: 'اسم الشركة مطلوب' });
+    const { owner_phone, entity_type, ownership_type, funding_type, referred_by_id } = req.body;
+    const nextFundingType = funding_type || request.funding_type;
+    const productDetails = req.body?.product_details !== undefined
+      ? parseObjectField(req.body.product_details)
+      : parseObjectField(request.product_details);
+    const requestName = resolveRequestPrimaryName({ ...request, ...req.body, funding_type: nextFundingType }, productDetails);
+    const ownerName = resolveOwnerName({ ...request, ...req.body, funding_type: nextFundingType }, productDetails);
+    if (!requestName) return res.status(400).json({ error: 'أكمل الاسم الأساسي للطلب قبل الحفظ' });
     let partnerId = request.referred_by_id;
     if (referred_by_id !== undefined) {
       if (referred_by_id) {
@@ -952,15 +1168,15 @@ router.put('/:id', authMiddleware, async (req, res) => {
       UPDATE requests SET
         company_name = ?, owner_name = ?, owner_phone = ?,
         entity_type = ?, ownership_type = ?, funding_type = ?,
-        referred_by_id = ?, updated_at = NOW()
+        referred_by_id = ?, product_details = ?, updated_at = NOW()
       WHERE id = ?`
     ).run(
-      company_name.trim(), owner_name || null, owner_phone || null,
+      requestName, ownerName, owner_phone || null,
       entity_type || request.entity_type, ownership_type || request.ownership_type,
-      funding_type || request.funding_type, partnerId, req.params.id
+      nextFundingType, partnerId, JSON.stringify(productDetails || {}), req.params.id
     );
     await db.prepare('UPDATE companies SET company_name = ?, entity_type = ?, owner_name = ?, owner_phone = ? WHERE request_id = ?')
-      .run(company_name.trim(), entity_type || request.entity_type, owner_name || null, owner_phone || null, req.params.id);
+      .run(requestName, entity_type || request.entity_type, ownerName, owner_phone || null, req.params.id);
     let fundingEntityDocuments = [];
     if (request.funding_entity_id) {
       const fundingEntity = await db.prepare('SELECT required_documents FROM funding_entities WHERE id = ?').get(request.funding_entity_id);
@@ -970,9 +1186,11 @@ router.put('/:id', authMiddleware, async (req, res) => {
       ...request,
       entity_type: entity_type || request.entity_type,
       ownership_type: ownership_type || request.ownership_type,
+      funding_type: nextFundingType,
+      product_details: productDetails,
       fe_required_docs: fundingEntityDocuments,
     });
-    const updated = await db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
+    const updated = parseRequestRow(await db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id));
     res.json(updated);
   } catch (err) {
     console.error(err);

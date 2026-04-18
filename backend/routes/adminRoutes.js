@@ -6,6 +6,26 @@ const { ensureRequestDocuments } = require('../services/requestDocuments');
 
 const router = express.Router();
 
+function parseObjectField(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (!value) return {};
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function parseRequestRow(request = null) {
+  if (!request) return request;
+  return {
+    ...request,
+    product_details: parseObjectField(request.product_details),
+  };
+}
+
 // ===== USERS =====
 router.post('/users', adminMiddleware, async (req, res) => {
   try {
@@ -145,7 +165,7 @@ router.get('/requests', adminMiddleware, async (req, res) => {
       LEFT JOIN funding_entities fe ON r.funding_entity_id = fe.id
       ORDER BY r.updated_at DESC
     `).all();
-    res.json(requests);
+    res.json((requests || []).map(parseRequestRow));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطأ في استرجاع الطلبات' });
@@ -176,7 +196,7 @@ router.get('/requests/:id', adminMiddleware, async (req, res) => {
     ]);
     let analysisResult = {};
     try { analysisResult = JSON.parse(request.analysis_result || '{}'); } catch (e) {}
-    res.json({ ...request, analysis_result: analysisResult, bank_statements: bankStatements, account_statements: accountStatements, tax_documents: taxDocuments, documents, status_history: statusHistory });
+    res.json({ ...parseRequestRow(request), analysis_result: analysisResult, bank_statements: bankStatements, account_statements: accountStatements, tax_documents: taxDocuments, documents, status_history: statusHistory });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطأ' });

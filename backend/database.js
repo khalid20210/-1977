@@ -148,6 +148,7 @@ async function initDatabase() {
     rejection_reason TEXT,
     funding_entity_id INTEGER,
     analysis_result TEXT DEFAULT '{}',
+    product_details TEXT DEFAULT '{}',
     total_pos REAL DEFAULT 0,
     total_deposit REAL DEFAULT 0,
     total_transfer REAL DEFAULT 0,
@@ -244,8 +245,14 @@ async function initDatabase() {
     request_id INTEGER NOT NULL,
     sender_id INTEGER NOT NULL,
     message TEXT NOT NULL,
+    attachment_path TEXT,
+    attachment_name TEXT,
     created_at TIMESTAMP DEFAULT NOW()
   )`);
+
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS product_details TEXT DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE request_messages ADD COLUMN IF NOT EXISTS attachment_path TEXT`);
+  await pool.query(`ALTER TABLE request_messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS message_reads (
     user_id INTEGER NOT NULL,

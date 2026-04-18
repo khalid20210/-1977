@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Search, Plus, Eye, Send, ChevronDown, X, Phone, Building2,
-  User, FileText, Edit2, Trash2, AlertTriangle, Upload
+  User, FileText, Edit2, Trash2, AlertTriangle, Upload, Briefcase, Landmark, Wallet, Home, Paperclip
 } from 'lucide-react';
 
 const STATUS_MAP = {
@@ -52,6 +52,202 @@ const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية
 
 const DOC_UPLOAD_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp';
 const ACCOUNT_STATEMENT_ACCEPT = '.xlsx,.xls';
+const CHAT_ATTACHMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.doc,.docx';
+const INPUT_CLASS = 'w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+const SELECT_CLASS = 'w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500';
+const LABEL_CLASS = 'block text-xs font-semibold text-gray-600 mb-1';
+
+function createInitialProductDetails(fundingType = 'نقاط بيع') {
+  switch (fundingType) {
+    case 'إقرارات ضريبية':
+      return {
+        total_pos: '',
+        total_deposit: '',
+        tax_return_period: 'ربعية',
+        has_required_tax_returns: 'نعم',
+        has_financial_statements: 'نعم',
+        profit_ratio: '',
+      };
+    case 'تمويل شخصي':
+      return {
+        employee_name: '',
+        salary_amount: '',
+        existing_debt_amount: '',
+        personal_nationality: 'سعودي',
+        has_simah_issues: 'لا',
+        has_service_stop: 'لا',
+      };
+    case 'عقار':
+      return {
+        applicant_category: 'موظف',
+        applicant_name: '',
+        business_name: '',
+        owner_name: '',
+        employer_name: '',
+        salary_amount: '',
+        monthly_income: '',
+        property_type: 'شقة',
+        property_value: '',
+        has_down_payment: 'نعم',
+        down_payment_amount: '',
+      };
+    case 'رهن':
+      return {
+        applicant_category: 'موظف',
+        applicant_name: '',
+        business_name: '',
+        owner_name: '',
+        employer_name: '',
+        salary_amount: '',
+        monthly_income: '',
+        property_value: '',
+        has_property_title: 'نعم',
+      };
+    case 'كاش':
+      return {
+        has_financial_statements: 'لا',
+        profit_ratio: '',
+      };
+    default:
+      return {};
+  }
+}
+
+function createInitialNewForm() {
+  return {
+    company_name: '',
+    owner_name: '',
+    owner_phone: '',
+    entity_type: 'شركة',
+    ownership_type: 'سعودي',
+    funding_type: 'نقاط بيع',
+    referred_by_id: '',
+    product_details: createInitialProductDetails('نقاط بيع'),
+  };
+}
+
+function mergeProductDetailsForFundingType(fundingType, currentDetails = {}) {
+  return {
+    ...createInitialProductDetails(fundingType),
+    ...(currentDetails || {}),
+  };
+}
+
+function normalizeApplicantCategory(value = '') {
+  const rawValue = String(value || '').trim();
+  if (['مالك منشأة', 'صاحب منشأة', 'منشأة'].includes(rawValue)) return 'مالك منشأة';
+  if (['موظف', 'موظفة'].includes(rawValue)) return 'موظف';
+  if (['فرد', 'فردي', 'فرد مستقل'].includes(rawValue)) return 'فرد';
+  return rawValue;
+}
+
+function isBusinessRequestForm(form = {}) {
+  const fundingType = String(form.funding_type || '').trim();
+  const applicantCategory = normalizeApplicantCategory(form.product_details?.applicant_category);
+  if (['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'أسطول', 'تمويل تجاري'].includes(fundingType)) return true;
+  return applicantCategory === 'مالك منشأة';
+}
+
+function deriveRequestPayload(form = {}) {
+  const productDetails = form.product_details || {};
+  const fundingType = String(form.funding_type || '').trim();
+  const applicantCategory = normalizeApplicantCategory(productDetails.applicant_category);
+  const basePayload = {
+    ...form,
+    product_details: productDetails,
+  };
+
+  if (fundingType === 'تمويل شخصي') {
+    const employeeName = String(productDetails.employee_name || '').trim();
+    return {
+      ...basePayload,
+      company_name: employeeName,
+      owner_name: employeeName,
+      entity_type: 'فرد',
+      ownership_type: productDetails.personal_nationality || 'سعودي',
+    };
+  }
+
+  if (['عقار', 'رهن'].includes(fundingType) && applicantCategory !== 'مالك منشأة') {
+    const applicantName = String(productDetails.applicant_name || '').trim();
+    return {
+      ...basePayload,
+      company_name: applicantName,
+      owner_name: applicantName,
+      entity_type: 'فرد',
+    };
+  }
+
+  return basePayload;
+}
+
+function getStepOneHeading(form = {}) {
+  const fundingType = String(form.funding_type || '').trim();
+  if (fundingType === 'تمويل شخصي') return 'بيانات الموظف';
+  if (fundingType === 'إقرارات ضريبية') return 'بيانات الإقرارات والحركة';
+  if (fundingType === 'عقار') return 'بيانات طالب التمويل والعقار';
+  if (fundingType === 'رهن') return 'بيانات طالب الرهن والعقار';
+  if (fundingType === 'كاش') return 'بيانات الحركة النقدية';
+  return 'بيانات المنشأة';
+}
+
+function getUploadSections(fundingType = '') {
+  const businessSections = [
+    {
+      key: 'bank',
+      title: 'كشوف الحساب PDF',
+      description: 'ارفع كشوف الحساب البنكية بصيغة PDF أو صور واضحة.',
+      accept: DOC_UPLOAD_ACCEPT,
+      emptyLabel: 'اضغط لاختيار ملفات متعددة',
+      accentClass: 'text-purple-600',
+    },
+    {
+      key: 'account',
+      title: 'كشوف الحساب Excel',
+      description: 'ارفع ملف Excel أو XLS عند توفره.',
+      accept: ACCOUNT_STATEMENT_ACCEPT,
+      emptyLabel: 'اضغط لاختيار ملفات Excel',
+      accentClass: 'text-indigo-600',
+    },
+  ];
+
+  if (fundingType === 'إقرارات ضريبية') {
+    return [
+      ...businessSections,
+      {
+        key: 'tax',
+        title: 'قوائم مالية وإقرارات',
+        description: 'ارفع الإقرارات المتاحة والقوائم المالية عند وجودها.',
+        accept: DOC_UPLOAD_ACCEPT,
+        emptyLabel: 'اضغط لاختيار ملفات متعددة',
+        accentClass: 'text-emerald-600',
+      },
+    ];
+  }
+
+  if (['نقاط بيع', 'كاش', 'أسطول', 'تمويل تجاري'].includes(fundingType)) {
+    return businessSections;
+  }
+
+  return [];
+}
+
+function getUploadStepItems(fundingType = '') {
+  const sections = getUploadSections(fundingType);
+  if (sections.length === 0) {
+    return [
+      '1. ارفع المستندات المسماة فقط من القائمة المقابلة.',
+      '2. لا توجد كشوف إضافية مطلوبة لهذا المسار حالياً.',
+      '3. احفظ الطلب ويمكنك استكمال أي بند لاحقاً من نفس الشاشة.',
+    ];
+  }
+
+  return [
+    '1. ارفع المستندات المسماة من البطاقات المقابلة.',
+    '2. أضف ملفات الدعم المطلوبة لهذا المنتج فقط.',
+    '3. احفظ المرفقات ويمكنك العودة لاحقاً لأي استكمال.',
+  ];
+}
 
 function formatPartnerLabel(partner) {
   const name = String(partner?.name || '').trim();
@@ -86,7 +282,335 @@ function getDocumentDescription(documentName, requestMeta = {}) {
     return 'يرفق عنوان المنشأة وعنوان الملاك إذا كانا في ملفات منفصلة.';
   }
 
+  if (documentName.includes('تعريف بالراتب')) {
+    return 'يرفق تعريف راتب حديث أو شهادة أجر تثبت مصدر الدخل.';
+  }
+
+  if (documentName.includes('كشف حساب آخر 3 أشهر')) {
+    return 'يرفق كشف حساب آخر 3 أشهر لقياس انتظام الدخل والحركة.';
+  }
+
+  if (documentName.includes('بيانات العقار') || documentName.includes('عرض السعر')) {
+    return 'يرفق عرض السعر أو تفاصيل العقار الأساسية مثل النوع والقيمة والموقع.';
+  }
+
+  if (documentName.includes('إثبات الدفعة الأولى')) {
+    return 'يرفع فقط عند وجود دفعة أولى جاهزة أو تم سداد جزء منها.';
+  }
+
+  if (documentName.includes('صك العقار')) {
+    return 'يرفق صك العقار أو أي مستند يثبت بيانات أصل الرهن.';
+  }
+
+  if (documentName.includes('مستندات دخل المنشأة')) {
+    return 'يرفق ما يثبت دخل النشاط مثل القوائم أو كشوف الحساب ذات الصلة.';
+  }
+
+  if (documentName.includes('الإقرارات الضريبية')) {
+    return 'يرفق ما هو متاح من الإقرارات بحسب نوعها شهرية أو ربعية.';
+  }
+
+  if (documentName.includes('القوائم المالية')) {
+    return 'ترفق القوائم المالية فقط إذا كانت متوفرة لهذا الطلب.';
+  }
+
   return 'مستند مطلوب ضمن ملف هذا الطلب.';
+}
+
+function ProductDetailsFields({ form, setForm }) {
+  const fundingType = String(form.funding_type || '').trim();
+  const productDetails = form.product_details || {};
+  const applicantCategory = normalizeApplicantCategory(productDetails.applicant_category);
+  const isBusiness = isBusinessRequestForm(form);
+
+  const setDetails = (patch) => {
+    setForm((current) => ({
+      ...current,
+      product_details: {
+        ...(current.product_details || {}),
+        ...patch,
+      },
+    }));
+  };
+
+  const renderBusinessIdentityFields = () => (
+    <>
+      <div>
+        <label className={LABEL_CLASS}>اسم المنشأة *</label>
+        <input
+          required
+          value={form.company_name}
+          onChange={(e) => setForm((current) => ({ ...current, company_name: e.target.value }))}
+          className={INPUT_CLASS}
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className={LABEL_CLASS}>اسم المالك</label>
+          <input
+            value={form.owner_name}
+            onChange={(e) => setForm((current) => ({ ...current, owner_name: e.target.value }))}
+            className={INPUT_CLASS}
+          />
+        </div>
+        <div>
+          <label className={LABEL_CLASS}>جوال المالك</label>
+          <input
+            value={form.owner_phone}
+            onChange={(e) => setForm((current) => ({ ...current, owner_phone: e.target.value }))}
+            className={INPUT_CLASS}
+            placeholder="05xxxxxxxx"
+          />
+        </div>
+        <div>
+          <label className={LABEL_CLASS}>نوع الكيان</label>
+          <select value={form.entity_type} onChange={(e) => setForm((current) => ({ ...current, entity_type: e.target.value }))} className={SELECT_CLASS}>
+            {['شركة', 'مؤسسة', 'شخص واحد', 'جمعية', 'حكومي'].map((option) => <option key={option}>{option}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={LABEL_CLASS}>الجنسية</label>
+          <select value={form.ownership_type} onChange={(e) => setForm((current) => ({ ...current, ownership_type: e.target.value }))} className={SELECT_CLASS}>
+            {['سعودي', 'مختلط', 'مستثمر'].map((option) => <option key={option}>{option}</option>)}
+          </select>
+        </div>
+      </div>
+    </>
+  );
+
+  if (fundingType === 'تمويل شخصي') {
+    return (
+      <div className="space-y-4 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+        <div className="flex items-center gap-2 text-blue-900">
+          <User size={16} />
+          <h3 className="text-sm font-bold">بيانات التمويل الشخصي</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className={LABEL_CLASS}>اسم الموظف *</label>
+            <input required value={productDetails.employee_name || ''} onChange={(e) => setDetails({ employee_name: e.target.value })} className={INPUT_CLASS} />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>جوال الموظف</label>
+            <input value={form.owner_phone} onChange={(e) => setForm((current) => ({ ...current, owner_phone: e.target.value }))} className={INPUT_CLASS} placeholder="05xxxxxxxx" />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>الراتب الشهري</label>
+            <input value={productDetails.salary_amount || ''} onChange={(e) => setDetails({ salary_amount: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 8500" />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>إجمالي الالتزامات الحالية</label>
+            <input value={productDetails.existing_debt_amount || ''} onChange={(e) => setDetails({ existing_debt_amount: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 1500" />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>الجنسية</label>
+            <select value={productDetails.personal_nationality || 'سعودي'} onChange={(e) => setDetails({ personal_nationality: e.target.value })} className={SELECT_CLASS}>
+              {['سعودي', 'غير سعودي'].map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>هل يوجد تعثر أو مشكلة في سمة؟</label>
+            <select value={productDetails.has_simah_issues || 'لا'} onChange={(e) => setDetails({ has_simah_issues: e.target.value })} className={SELECT_CLASS}>
+              {['لا', 'نعم'].map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={LABEL_CLASS}>هل يوجد إيقاف خدمات أو سند تنفيذي؟</label>
+            <select value={productDetails.has_service_stop || 'لا'} onChange={(e) => setDetails({ has_service_stop: e.target.value })} className={SELECT_CLASS}>
+              {['لا', 'نعم'].map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (fundingType === 'إقرارات ضريبية') {
+    return (
+      <div className="space-y-4">
+        {renderBusinessIdentityFields()}
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
+          <div className="flex items-center gap-2 text-emerald-900">
+            <FileText size={16} />
+            <h3 className="text-sm font-bold">بيانات الإقرار والحركة</h3>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={LABEL_CLASS}>إجمالي نقاط البيع</label>
+              <input value={productDetails.total_pos || ''} onChange={(e) => setDetails({ total_pos: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 1200000" />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>إجمالي الإيداعات</label>
+              <input value={productDetails.total_deposit || ''} onChange={(e) => setDetails({ total_deposit: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 800000" />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>نوع الإقرارات</label>
+              <select value={productDetails.tax_return_period || 'ربعية'} onChange={(e) => setDetails({ tax_return_period: e.target.value })} className={SELECT_CLASS}>
+                {['ربعية', 'شهرية'].map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>هل الإقرارات المطلوبة متوفرة؟</label>
+              <select value={productDetails.has_required_tax_returns || 'نعم'} onChange={(e) => setDetails({ has_required_tax_returns: e.target.value })} className={SELECT_CLASS}>
+                {['نعم', 'لا'].map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>هل توجد قوائم مالية؟</label>
+              <select value={productDetails.has_financial_statements || 'نعم'} onChange={(e) => setDetails({ has_financial_statements: e.target.value })} className={SELECT_CLASS}>
+                {['نعم', 'لا'].map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </div>
+            {String(productDetails.has_financial_statements || 'نعم') === 'نعم' && (
+              <div>
+                <label className={LABEL_CLASS}>نسبة الربح</label>
+                <input value={productDetails.profit_ratio || ''} onChange={(e) => setDetails({ profit_ratio: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 12" />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (fundingType === 'كاش') {
+    return (
+      <div className="space-y-4">
+        {renderBusinessIdentityFields()}
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4">
+          <div className="flex items-center gap-2 text-amber-900">
+            <Wallet size={16} />
+            <h3 className="text-sm font-bold">أسئلة الكاش</h3>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={LABEL_CLASS}>هل توجد قوائم مالية؟</label>
+              <select value={productDetails.has_financial_statements || 'لا'} onChange={(e) => setDetails({ has_financial_statements: e.target.value })} className={SELECT_CLASS}>
+                {['لا', 'نعم'].map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </div>
+            {String(productDetails.has_financial_statements || 'لا') === 'نعم' && (
+              <div>
+                <label className={LABEL_CLASS}>نسبة الربح</label>
+                <input value={productDetails.profit_ratio || ''} onChange={(e) => setDetails({ profit_ratio: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 8" />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (fundingType === 'عقار' || fundingType === 'رهن') {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+          <div className="flex items-center gap-2 text-indigo-900">
+            {fundingType === 'عقار' ? <Home size={16} /> : <Landmark size={16} />}
+            <h3 className="text-sm font-bold">نوع المتقدم</h3>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {['موظف', 'مالك منشأة', 'فرد'].map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setDetails({ applicant_category: option })}
+                className={`rounded-xl px-3 py-2 text-sm font-bold transition-colors ${applicantCategory === option ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isBusiness ? renderBusinessIdentityFields() : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={LABEL_CLASS}>{applicantCategory === 'موظف' ? 'اسم الموظف *' : 'اسم العميل *'}</label>
+              <input required value={productDetails.applicant_name || ''} onChange={(e) => setDetails({ applicant_name: e.target.value })} className={INPUT_CLASS} />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>{applicantCategory === 'موظف' ? 'جوال الموظف' : 'جوال العميل'}</label>
+              <input value={form.owner_phone} onChange={(e) => setForm((current) => ({ ...current, owner_phone: e.target.value }))} className={INPUT_CLASS} placeholder="05xxxxxxxx" />
+            </div>
+          </div>
+        )}
+
+        {(fundingType === 'عقار' || fundingType === 'رهن') && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {applicantCategory === 'مالك منشأة' ? (
+              <>
+                <div>
+                  <label className={LABEL_CLASS}>اسم المنشأة المرتبط بالعقار</label>
+                  <input value={productDetails.business_name || ''} onChange={(e) => setDetails({ business_name: e.target.value })} className={INPUT_CLASS} />
+                </div>
+                <div>
+                  <label className={LABEL_CLASS}>اسم مقدم الطلب</label>
+                  <input value={productDetails.owner_name || ''} onChange={(e) => setDetails({ owner_name: e.target.value })} className={INPUT_CLASS} />
+                </div>
+              </>
+            ) : applicantCategory === 'موظف' ? (
+              <>
+                <div>
+                  <label className={LABEL_CLASS}>جهة العمل</label>
+                  <input value={productDetails.employer_name || ''} onChange={(e) => setDetails({ employer_name: e.target.value })} className={INPUT_CLASS} />
+                </div>
+                <div>
+                  <label className={LABEL_CLASS}>الراتب الشهري</label>
+                  <input value={productDetails.salary_amount || ''} onChange={(e) => setDetails({ salary_amount: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 12000" />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className={LABEL_CLASS}>الدخل الشهري التقريبي</label>
+                <input value={productDetails.monthly_income || ''} onChange={(e) => setDetails({ monthly_income: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 9000" />
+              </div>
+            )}
+
+            {fundingType === 'عقار' && (
+              <div>
+                <label className={LABEL_CLASS}>نوع العقار</label>
+                <select value={productDetails.property_type || 'شقة'} onChange={(e) => setDetails({ property_type: e.target.value })} className={SELECT_CLASS}>
+                  {['شقة', 'فيلا', 'أرض', 'عمارة', 'أخرى'].map((option) => <option key={option}>{option}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className={LABEL_CLASS}>{fundingType === 'عقار' ? 'قيمة العقار' : 'قيمة العقار أو مبلغ الرهن'}</label>
+              <input value={productDetails.property_value || ''} onChange={(e) => setDetails({ property_value: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 950000" />
+            </div>
+
+            {fundingType === 'عقار' ? (
+              <>
+                <div>
+                  <label className={LABEL_CLASS}>هل توجد دفعة أولى؟</label>
+                  <select value={productDetails.has_down_payment || 'نعم'} onChange={(e) => setDetails({ has_down_payment: e.target.value })} className={SELECT_CLASS}>
+                    {['نعم', 'لا'].map((option) => <option key={option}>{option}</option>)}
+                  </select>
+                </div>
+                {String(productDetails.has_down_payment || 'نعم') === 'نعم' && (
+                  <div>
+                    <label className={LABEL_CLASS}>قيمة الدفعة الأولى</label>
+                    <input value={productDetails.down_payment_amount || ''} onChange={(e) => setDetails({ down_payment_amount: e.target.value })} className={INPUT_CLASS} placeholder="مثال: 150000" />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div>
+                <label className={LABEL_CLASS}>هل صك العقار أو بياناته جاهزة؟</label>
+                <select value={productDetails.has_property_title || 'نعم'} onChange={(e) => setDetails({ has_property_title: e.target.value })} className={SELECT_CLASS}>
+                  {['نعم', 'لا'].map((option) => <option key={option}>{option}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return renderBusinessIdentityFields();
 }
 
 function repairUploadedFileName(value = '') {
@@ -242,7 +766,7 @@ export default function Requests() {
 
   const [showNew, setShowNew] = useState(false);
   const [partners, setPartners] = useState([]);
-  const [newForm, setNewForm] = useState({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة', ownership_type: 'سعودي', funding_type: 'نقاط بيع', referred_by_id: '' });
+  const [newForm, setNewForm] = useState(createInitialNewForm);
   const [submittingNew, setSubmittingNew] = useState(false);
 
   const [reviewReq, setReviewReq] = useState(null);
@@ -250,6 +774,7 @@ export default function Requests() {
   const [loadingReview, setLoadingReview] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatText, setChatText] = useState('');
+  const [chatFile, setChatFile] = useState(null);
   const [loadingChat, setLoadingChat] = useState(false);
   const [sendingChat, setSendingChat] = useState(false);
   const [uploadingDocId, setUploadingDocId] = useState(null);
@@ -298,7 +823,7 @@ export default function Requests() {
     setUploadBankFiles([]);
     setUploadAccountFiles([]);
     setUploadTaxFiles([]);
-    setNewForm({ company_name: '', owner_name: '', owner_phone: '', entity_type: 'شركة', ownership_type: 'سعودي', funding_type: 'نقاط بيع', referred_by_id: '' });
+    setNewForm(createInitialNewForm());
   };
 
   const fetchUserRequestDetails = async (requestId) => {
@@ -406,25 +931,40 @@ export default function Requests() {
 
   // Edit request
   const [editReq, setEditReq] = useState(null);
-  const [editForm, setEditForm] = useState({});
+  const [editForm, setEditForm] = useState(createInitialNewForm());
   const [submittingEdit, setSubmittingEdit] = useState(false);
 
   const openEdit = (r) => {
+    const fundingType = r.funding_type || 'نقاط بيع';
+    const currentDetails = r.product_details || {};
+    const normalizedDetails = mergeProductDetailsForFundingType(fundingType, {
+      ...currentDetails,
+      employee_name: currentDetails.employee_name || (fundingType === 'تمويل شخصي' ? (r.owner_name || r.company_name || '') : currentDetails.employee_name),
+      applicant_name: currentDetails.applicant_name || (['عقار', 'رهن'].includes(fundingType) && normalizeApplicantCategory(currentDetails.applicant_category) !== 'مالك منشأة' ? (r.owner_name || r.company_name || '') : currentDetails.applicant_name),
+      business_name: currentDetails.business_name || (['عقار', 'رهن'].includes(fundingType) && normalizeApplicantCategory(currentDetails.applicant_category) === 'مالك منشأة' ? (r.company_name || '') : currentDetails.business_name),
+      owner_name: currentDetails.owner_name || r.owner_name || '',
+      personal_nationality: currentDetails.personal_nationality || r.ownership_type || 'سعودي',
+    });
+
     setEditReq(r);
     setEditForm({
+      ...createInitialNewForm(),
       company_name: r.company_name || '',
       owner_name: r.owner_name || '',
       owner_phone: r.owner_phone || '',
       entity_type: r.entity_type || 'شركة',
       ownership_type: r.ownership_type || 'سعودي',
-      funding_type: r.funding_type || 'نقاط بيع',
+      funding_type: fundingType,
+      referred_by_id: r.referred_by_id || '',
+      product_details: normalizedDetails,
     });
   };
 
   const submitEdit = async (e) => {
     e.preventDefault();
     setSubmittingEdit(true);
-    const res = await authFetch(`/api/requests/${editReq.id}`, { method: 'PUT', body: JSON.stringify(editForm) });
+    const payload = deriveRequestPayload(editForm);
+    const res = await authFetch(`/api/requests/${editReq.id}`, { method: 'PUT', body: JSON.stringify(payload) });
     const d = await res.json();
     if (!res.ok) alert(d.error || 'خطأ في التعديل');
     else { setEditReq(null); load(); }
@@ -458,6 +998,7 @@ export default function Requests() {
     setUploadBankFiles([]);
     setUploadAccountFiles([]);
     setUploadTaxFiles([]);
+    setNewForm(createInitialNewForm());
     setShowNew(true);
   };
 
@@ -479,7 +1020,8 @@ export default function Requests() {
   const createRequest = async (e) => {
     e.preventDefault();
     setSubmittingNew(true);
-    const res = await authFetch('/api/requests', { method: 'POST', body: JSON.stringify(newForm) });
+    const payload = deriveRequestPayload(newForm);
+    const res = await authFetch('/api/requests', { method: 'POST', body: JSON.stringify(payload) });
     const d = await res.json();
     if (!res.ok) { alert(d.error || 'خطأ'); setSubmittingNew(false); return; }
     setNewReqId(d.id);
@@ -564,6 +1106,7 @@ export default function Requests() {
     setReviewData(null);
     setChatMessages([]);
     setChatText('');
+    setChatFile(null);
     setSuggestedEntities([]);
     setReviewBankFiles([]);
     setReviewAccountFiles([]);
@@ -609,16 +1152,20 @@ export default function Requests() {
 
   const sendChat = async (e) => {
     e.preventDefault();
-    if (!reviewReq || !chatText.trim()) return;
+    if (!reviewReq || (!chatText.trim() && !chatFile)) return;
     setSendingChat(true);
+    const formData = new FormData();
+    if (chatText.trim()) formData.append('message', chatText.trim());
+    if (chatFile) formData.append('file', chatFile);
     const res = await authFetch(`/api/requests/${reviewReq.id}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ message: chatText.trim() }),
+      body: formData,
     });
     const d = await res.json();
     if (!res.ok) alert(d.error || 'تعذر إرسال الرسالة');
     else {
       setChatText('');
+      setChatFile(null);
       loadChat(reviewReq.id);
     }
     setSendingChat(false);
@@ -667,6 +1214,13 @@ export default function Requests() {
   const newRequestProgress = newRequestDocuments.length > 0
     ? Math.round((uploadedNewRequestDocuments / newRequestDocuments.length) * 100)
     : 0;
+  const activeFundingType = newRequestData?.funding_type || newForm.funding_type;
+  const uploadSections = getUploadSections(activeFundingType).map((section) => ({
+    ...section,
+    files: section.key === 'bank' ? uploadBankFiles : section.key === 'account' ? uploadAccountFiles : uploadTaxFiles,
+    onChange: section.key === 'bank' ? setUploadBankFiles : section.key === 'account' ? setUploadAccountFiles : setUploadTaxFiles,
+  }));
+  const uploadStepItems = getUploadStepItems(activeFundingType);
 
   return (
     <div dir="rtl">
@@ -848,49 +1402,39 @@ export default function Requests() {
                 <div className="flex items-center justify-between mb-5">
                   <div>
                     <h2 className="text-lg font-black text-gray-900">طلب جديد</h2>
-                    {!isAdmin && <p className="text-xs text-gray-400 mt-0.5">الخطوة 1 من 2 — بيانات المنشأة</p>}
+                    {!isAdmin && <p className="text-xs text-gray-400 mt-0.5">الخطوة 1 من 2 — {getStepOneHeading(newForm)}</p>}
                   </div>
                   <button onClick={resetNewFlow} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
                 </div>
                 <form onSubmit={createRequest} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المنشأة *</label>
-                    <input required value={newForm.company_name} onChange={e => setNewForm({ ...newForm, company_name: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المالك</label>
-                      <input value={newForm.owner_name} onChange={e => setNewForm({ ...newForm, owner_name: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">جوال المالك</label>
-                      <input value={newForm.owner_phone} onChange={e => setNewForm({ ...newForm, owner_phone: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="05xxxxxxxx" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">نوع الكيان</label>
-                      <select value={newForm.entity_type} onChange={e => setNewForm({ ...newForm, entity_type: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        {['شركة', 'مؤسسة', 'شخص واحد', 'جمعية', 'حكومي'].map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">الجنسية</label>
-                      <select value={newForm.ownership_type} onChange={e => setNewForm({ ...newForm, ownership_type: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        {['سعودي', 'مختلط', 'مستثمر'].map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-2">نوع التمويل</label>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {FUNDING_TYPES.map(t => (
-                        <button key={t} type="button" onClick={() => setNewForm({ ...newForm, funding_type: t })} className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-colors ${newForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
+                        <button key={t} type="button" onClick={() => setNewForm((current) => ({ ...current, funding_type: t, product_details: mergeProductDetailsForFundingType(t, current.product_details) }))} className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-colors ${newForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
                       ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+                    <ProductDetailsFields form={newForm} setForm={setNewForm} />
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center gap-2 text-slate-800">
+                        {newForm.funding_type === 'تمويل شخصي' ? <User size={16} /> : newForm.funding_type === 'كاش' ? <Wallet size={16} /> : newForm.funding_type === 'إقرارات ضريبية' ? <FileText size={16} /> : ['عقار', 'رهن'].includes(newForm.funding_type) ? <Home size={16} /> : <Building2 size={16} />}
+                        <h3 className="text-sm font-bold">ملخص المسار</h3>
+                      </div>
+                      <p className="mt-2 text-xs leading-6 text-slate-600">هذا النموذج يغير الحقول والمرفقات المطلوبة تلقائياً حسب نوع التمويل، لذلك لن تظهر لك ملفات أو أسئلة لا تخص المنتج المختار.</p>
+                      <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
+                        <span className="font-bold">المنتج الحالي:</span> {newForm.funding_type}
+                      </div>
+                      <div className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
+                        <span className="font-bold">نوع الإدخال:</span> {isBusinessRequestForm(newForm) ? 'منشأة / نشاط' : 'فرد / موظف'}
+                      </div>
                     </div>
                   </div>
                   {isAdmin && partners.length > 0 && (
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">الموظف / الشريك</label>
-                      <select value={newForm.referred_by_id} onChange={e => setNewForm({ ...newForm, referred_by_id: e.target.value })} className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <select value={newForm.referred_by_id} onChange={e => setNewForm((current) => ({ ...current, referred_by_id: e.target.value }))} className={SELECT_CLASS}>
                         <option value="">اختر...</option>
                         {partners.map(p => <option key={p.id} value={p.id}>{formatPartnerLabel(p)}</option>)}
                       </select>
@@ -937,51 +1481,31 @@ export default function Requests() {
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 sm:rounded-3xl sm:p-4">
                       <h3 className="font-bold text-emerald-900 text-sm">ترتيب الرفع</h3>
                       <div className="mt-2.5 space-y-2 text-[11px] text-emerald-900/80 sm:mt-3 sm:text-xs">
-                        <div className="rounded-xl bg-white/80 px-3 py-2 sm:rounded-2xl">1. ارفع المستندات الأساسية من القائمة المقابلة.</div>
-                        <div className="rounded-xl bg-white/80 px-3 py-2 sm:rounded-2xl">2. أضف كشوف الحساب PDF وExcel لآخر 12 شهر.</div>
-                        <div className="rounded-xl bg-white/80 px-3 py-2 sm:rounded-2xl">3. أرفق القوائم المالية ثم احفظ المرفقات.</div>
+                        {uploadStepItems.map((item) => (
+                          <div key={item} className="rounded-xl bg-white/80 px-3 py-2 sm:rounded-2xl">{item}</div>
+                        ))}
                       </div>
                     </div>
-                    <div className="border border-gray-200 rounded-xl p-3 bg-white sm:rounded-2xl sm:p-4">
-                      <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
-                        <Upload size={15} className="text-purple-600" /> كشوف الحساب PDF
-                      </h3>
-                      <p className="mb-2.5 text-[11px] text-gray-500 sm:mb-3 sm:text-xs">آخر 12 شهر بصيغة PDF أو صورة واضحة.</p>
-                      <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors sm:h-24 sm:rounded-xl">
-                        <Upload size={18} className="text-gray-400 mb-1 sm:size-5" />
-                        <span className="text-[11px] text-gray-500 sm:text-xs">{uploadBankFiles.length > 0 ? `${uploadBankFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
-                        <input type="file" accept={DOC_UPLOAD_ACCEPT} multiple className="hidden" onChange={e => setUploadBankFiles(Array.from(e.target.files || []))} />
-                      </label>
-                      {uploadBankFiles.length > 0 && <p className="mt-1.5 text-[11px] font-medium text-green-600 sm:text-xs">✓ {uploadBankFiles.length} ملف</p>}
-                    </div>
-                    <div className="border border-gray-200 rounded-xl p-3 bg-white sm:rounded-2xl sm:p-4">
-                      <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
-                        <Upload size={15} className="text-indigo-600" /> كشوف الحساب Excel
-                      </h3>
-                      <p className="mb-2.5 text-[11px] text-gray-500 sm:mb-3 sm:text-xs">ارفع ملف Excel أو XLS لآخر 12 شهر.</p>
-                      <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors sm:h-24 sm:rounded-xl">
-                        <Upload size={18} className="text-gray-400 mb-1 sm:size-5" />
-                        <span className="text-[11px] text-gray-500 sm:text-xs">{uploadAccountFiles.length > 0 ? `${uploadAccountFiles.length} ملف محدد` : 'اضغط لاختيار ملفات Excel'}</span>
-                        <input type="file" accept={ACCOUNT_STATEMENT_ACCEPT} multiple className="hidden" onChange={e => setUploadAccountFiles(Array.from(e.target.files || []))} />
-                      </label>
-                      {uploadAccountFiles.length > 0 && <p className="mt-1.5 text-[11px] font-medium text-green-600 sm:text-xs">✓ {uploadAccountFiles.length} ملف</p>}
-                    </div>
-                    <div className="border border-gray-200 rounded-xl p-3 bg-white sm:rounded-2xl sm:p-4">
-                      <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
-                        <Upload size={15} className="text-emerald-600" /> قوائم مالية وإقرارات
-                      </h3>
-                      <p className="mb-2.5 text-[11px] leading-5 text-gray-500 sm:mb-3 sm:text-xs">تشمل القوائم المالية والإقرارات الضريبية: آخر 6 فترات ربعية أو آخر 15 فترة شهرية حسب نوع الإقرار.</p>
-                      <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors sm:h-24 sm:rounded-xl">
-                        <Upload size={18} className="text-gray-400 mb-1 sm:size-5" />
-                        <span className="text-[11px] text-gray-500 sm:text-xs">{uploadTaxFiles.length > 0 ? `${uploadTaxFiles.length} ملف محدد` : 'اضغط لاختيار ملفات متعددة'}</span>
-                        <input type="file" accept={DOC_UPLOAD_ACCEPT} multiple className="hidden" onChange={e => setUploadTaxFiles(Array.from(e.target.files || []))} />
-                      </label>
-                      {uploadTaxFiles.length > 0 && <p className="mt-1.5 text-[11px] font-medium text-green-600 sm:text-xs">✓ {uploadTaxFiles.length} ملف</p>}
-                    </div>
+                    {uploadSections.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-4 text-center text-sm text-gray-500">
+                        هذا المنتج لا يحتاج مناطق رفع إضافية هنا. استخدم فقط بطاقات المستندات المسماة في الجهة المقابلة.
+                      </div>
+                    ) : uploadSections.map((section) => (
+                      <UploadSupportCard
+                        key={section.key}
+                        title={section.title}
+                        description={section.description}
+                        files={section.files}
+                        onChange={section.onChange}
+                        accept={section.accept}
+                        emptyLabel={section.emptyLabel}
+                        accentClass={section.accentClass}
+                      />
+                    ))}
                     <div className="rounded-2xl border border-gray-200 bg-slate-50 p-3 sm:rounded-3xl sm:p-4 xl:sticky xl:bottom-0">
                       <div className="flex items-start gap-2 text-[11px] text-gray-500 sm:text-xs">
                         <AlertTriangle size={14} className="mt-0.5 text-amber-500" />
-                        <p>يمكنك حفظ المرفقات الآن واستكمال أي مستند لاحقًا من شاشة الطلب نفسها دون الرجوع لبداية الخطوات.</p>
+                        <p>يمكنك حفظ ما رفعته الآن، واستكمال أي مستند أو ملف دعم لاحقًا من شاشة الطلب نفسها دون الرجوع للبداية.</p>
                       </div>
                       <button
                         onClick={submitWithFiles}
@@ -1027,50 +1551,30 @@ export default function Requests() {
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
                       <h3 className="font-bold text-emerald-900 text-[12px]">ترتيب الرفع</h3>
                       <div className="mt-2 space-y-1.5 text-[10px] text-emerald-900/80">
-                        <div className="rounded-lg bg-white/80 px-2.5 py-2">1. ارفع المستندات الأساسية.</div>
-                        <div className="rounded-lg bg-white/80 px-2.5 py-2">2. أضف كشوف PDF وExcel.</div>
-                        <div className="rounded-lg bg-white/80 px-2.5 py-2">3. أرفق القوائم ثم احفظ.</div>
+                        {uploadStepItems.map((item) => (
+                          <div key={item} className="rounded-lg bg-white/80 px-2.5 py-2">{item}</div>
+                        ))}
                       </div>
                     </div>
 
-                    <MobileUploadAccordion title="كشوف الحساب PDF" countLabel={`${uploadBankFiles.length} ملف`}>
-                      <UploadSupportCard
-                        title="كشوف الحساب PDF"
-                        description="آخر 12 شهر بصيغة PDF أو صورة واضحة."
-                        files={uploadBankFiles}
-                        onChange={setUploadBankFiles}
-                        accept={DOC_UPLOAD_ACCEPT}
-                        emptyLabel="اضغط لاختيار ملفات متعددة"
-                        accentClass="text-purple-600"
-                        compact
-                      />
-                    </MobileUploadAccordion>
-
-                    <MobileUploadAccordion title="كشوف الحساب Excel" countLabel={`${uploadAccountFiles.length} ملف`}>
-                      <UploadSupportCard
-                        title="كشوف الحساب Excel"
-                        description="ارفع ملف Excel أو XLS لآخر 12 شهر."
-                        files={uploadAccountFiles}
-                        onChange={setUploadAccountFiles}
-                        accept={ACCOUNT_STATEMENT_ACCEPT}
-                        emptyLabel="اضغط لاختيار ملفات Excel"
-                        accentClass="text-indigo-600"
-                        compact
-                      />
-                    </MobileUploadAccordion>
-
-                    <MobileUploadAccordion title="قوائم مالية وإقرارات" countLabel={`${uploadTaxFiles.length} ملف`}>
-                      <UploadSupportCard
-                        title="قوائم مالية وإقرارات"
-                        description="آخر 6 فترات ربعية أو 15 فترة شهرية حسب نوع الإقرار."
-                        files={uploadTaxFiles}
-                        onChange={setUploadTaxFiles}
-                        accept={DOC_UPLOAD_ACCEPT}
-                        emptyLabel="اضغط لاختيار ملفات متعددة"
-                        accentClass="text-emerald-600"
-                        compact
-                      />
-                    </MobileUploadAccordion>
+                    {uploadSections.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-gray-300 bg-white px-3 py-4 text-center text-[11px] text-gray-500">
+                        لا توجد ملفات دعم إضافية لهذا المسار. ارفع المستندات المسماة فقط ثم احفظ.
+                      </div>
+                    ) : uploadSections.map((section) => (
+                      <MobileUploadAccordion key={section.key} title={section.title} countLabel={`${section.files.length} ملف`}>
+                        <UploadSupportCard
+                          title={section.title}
+                          description={section.description}
+                          files={section.files}
+                          onChange={section.onChange}
+                          accept={section.accept}
+                          emptyLabel={section.emptyLabel}
+                          accentClass={section.accentClass}
+                          compact
+                        />
+                      </MobileUploadAccordion>
+                    ))}
 
                     <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
                       <div className="flex items-start gap-2 text-[10px] text-gray-500">
@@ -1335,6 +1839,17 @@ export default function Requests() {
                                 {m.sender_name} · {fmt(m.created_at)}
                               </div>
                               <div className="text-sm leading-6 whitespace-pre-wrap">{m.message}</div>
+                              {m.attachment_path && getFileUrl(m.attachment_path) && (
+                                <a
+                                  href={getFileUrl(m.attachment_path)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold ${mine ? 'bg-white/15 text-white hover:bg-white/20' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+                                >
+                                  <Paperclip size={13} />
+                                  {repairUploadedFileName(m.attachment_name || 'تحميل المرفق')}
+                                </a>
+                              )}
                             </div>
                           </div>
                         );
@@ -1348,14 +1863,29 @@ export default function Requests() {
                       placeholder="اكتب رسالة..."
                       className="flex-1 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+                    <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-gray-300 px-3 py-2.5 text-gray-500 hover:bg-gray-50">
+                      <Paperclip size={16} />
+                      <input
+                        type="file"
+                        accept={CHAT_ATTACHMENT_ACCEPT}
+                        className="hidden"
+                        onChange={(e) => setChatFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
                     <button
                       type="submit"
-                      disabled={sendingChat || !chatText.trim()}
+                      disabled={sendingChat || (!chatText.trim() && !chatFile)}
                       className="px-4 py-2.5 rounded-xl text-white text-sm font-bold bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
                     >
                       {sendingChat ? 'جارٍ...' : 'إرسال'}
                     </button>
                   </form>
+                  {chatFile && (
+                    <div className="mt-2 flex items-center justify-between rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                      <span className="truncate">{chatFile.name}</span>
+                      <button type="button" onClick={() => setChatFile(null)} className="font-bold text-blue-800">إزالة</button>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : <div className="text-center py-12 text-gray-400">تعذر تحميل البيانات</div>}
@@ -1366,50 +1896,35 @@ export default function Requests() {
       {/* Edit Request Modal */}
       {editReq && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto" dir="rtl">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 my-8 p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 my-8 p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-black text-gray-900">تعديل الطلب #{editReq.id}</h2>
               <button onClick={() => setEditReq(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
-            <form onSubmit={submitEdit} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المنشأة *</label>
-                <input required value={editForm.company_name} onChange={e => setEditForm({ ...editForm, company_name: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المالك</label>
-                  <input value={editForm.owner_name} onChange={e => setEditForm({ ...editForm, owner_name: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">جوال المالك</label>
-                  <input value={editForm.owner_phone} onChange={e => setEditForm({ ...editForm, owner_phone: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="05xxxxxxxx" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">نوع الكيان</label>
-                  <select value={editForm.entity_type} onChange={e => setEditForm({ ...editForm, entity_type: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {['شركة', 'مؤسسة', 'شخص واحد', 'جمعية', 'حكومي'].map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">الجنسية</label>
-                  <select value={editForm.ownership_type} onChange={e => setEditForm({ ...editForm, ownership_type: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {['سعودي', 'غير سعودي', 'مشترك'].map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
+            <form onSubmit={submitEdit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">نوع التمويل</label>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {FUNDING_TYPES.map(t => (
-                    <button key={t} type="button" onClick={() => setEditForm({ ...editForm, funding_type: t })}
-                      className={`px-2 py-1.5 rounded-lg text-xs font-medium text-center transition-colors ${editForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
+                    <button key={t} type="button" onClick={() => setEditForm((current) => ({ ...current, funding_type: t, product_details: mergeProductDetailsForFundingType(t, current.product_details) }))}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-colors ${editForm.funding_type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t}</button>
                   ))}
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+                <ProductDetailsFields form={editForm} setForm={setEditForm} />
+                <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4">
+                  <div className="flex items-center gap-2 text-amber-900">
+                    {editForm.funding_type === 'تمويل شخصي' ? <User size={16} /> : editForm.funding_type === 'كاش' ? <Wallet size={16} /> : editForm.funding_type === 'إقرارات ضريبية' ? <FileText size={16} /> : ['عقار', 'رهن'].includes(editForm.funding_type) ? <Home size={16} /> : <Building2 size={16} />}
+                    <h3 className="text-sm font-bold">ملخص التعديل</h3>
+                  </div>
+                  <p className="mt-2 text-xs leading-6 text-amber-800/80">أنت تعدل نفس مسار الطلب الديناميكي، لذلك سيتغير الاسم الأساسي والحقول المطلوبة تلقائياً عند تغيير المنتج.</p>
+                  <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
+                    <span className="font-bold">المنتج الحالي:</span> {editForm.funding_type}
+                  </div>
+                  <div className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
+                    <span className="font-bold">نوع الإدخال:</span> {isBusinessRequestForm(editForm) ? 'منشأة / نشاط' : 'فرد / موظف'}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-3 pt-2">

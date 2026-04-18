@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   CheckCircle, XCircle, AlertCircle, Search, Building2,
-  Loader, Lightbulb, ChevronDown, ClipboardCheck, Percent, Wallet, ShieldCheck, Landmark, User, BadgeDollarSign, Briefcase
+  Loader, Lightbulb, ChevronDown, ClipboardCheck, Percent, Wallet, ShieldCheck, Landmark, User, BadgeDollarSign, Briefcase, Home
 } from 'lucide-react';
 
 const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
@@ -11,6 +11,8 @@ const OWNERSHIP_TYPES = ['سعودي', 'مختلط', 'مستثمر'];
 const FINANCIAL_STATEMENT_OPTIONS = ['لا', 'نعم'];
 const TAX_RETURN_PERIOD_OPTIONS = ['ربعية', 'شهرية'];
 const PERSONAL_NATIONALITY_OPTIONS = ['سعودي', 'غير سعودي'];
+const APPLICANT_CATEGORY_OPTIONS = ['موظف', 'مالك منشأة', 'فرد'];
+const PROPERTY_TYPES = ['شقة', 'فيلا', 'أرض', 'عمارة', 'أخرى'];
 
 const SAR = n => `${Number(n).toLocaleString('ar-SA', { maximumFractionDigits: 0 })} ر.س`;
 
@@ -97,6 +99,17 @@ export default function Eligibility() {
     personalNationality: 'سعودي',
     hasSimahIssues: 'لا',
     hasServiceStop: 'لا',
+    applicantCategory: 'موظف',
+    applicantName: '',
+    businessName: '',
+    ownerName: '',
+    employerName: '',
+    monthlyIncome: '',
+    propertyType: 'شقة',
+    propertyValue: '',
+    hasDownPayment: 'نعم',
+    downPaymentAmount: '',
+    hasPropertyTitle: 'نعم',
   });
 
   const [result,  setResult]  = useState(null);
@@ -108,6 +121,11 @@ export default function Eligibility() {
   const isCashFunding = form.fundingType === 'كاش';
   const isTaxFunding = form.fundingType === 'إقرارات ضريبية';
   const isPersonalFunding = form.fundingType === 'تمويل شخصي';
+  const isRealEstateFunding = form.fundingType === 'عقار';
+  const isMortgageFunding = form.fundingType === 'رهن';
+  const isPropertyFunding = isRealEstateFunding || isMortgageFunding;
+  const isBusinessApplicant = isPropertyFunding && form.applicantCategory === 'مالك منشأة';
+  const isEmployeeApplicant = isPropertyFunding && form.applicantCategory === 'موظف';
   const requiredTaxReturnsCount = form.taxReturnPeriod === 'ربعية' ? 6 : 15;
 
   const handleFundingTypeChange = (e) => {
@@ -128,6 +146,17 @@ export default function Eligibility() {
       personalNationality: nextFundingType === 'تمويل شخصي' ? current.personalNationality : 'سعودي',
       hasSimahIssues: nextFundingType === 'تمويل شخصي' ? current.hasSimahIssues : 'لا',
       hasServiceStop: nextFundingType === 'تمويل شخصي' ? current.hasServiceStop : 'لا',
+      applicantCategory: ['عقار', 'رهن'].includes(nextFundingType) ? current.applicantCategory : 'موظف',
+      applicantName: ['عقار', 'رهن'].includes(nextFundingType) ? current.applicantName : '',
+      businessName: ['عقار', 'رهن'].includes(nextFundingType) ? current.businessName : '',
+      ownerName: ['عقار', 'رهن'].includes(nextFundingType) ? current.ownerName : '',
+      employerName: ['عقار', 'رهن'].includes(nextFundingType) ? current.employerName : '',
+      monthlyIncome: ['عقار', 'رهن'].includes(nextFundingType) ? current.monthlyIncome : '',
+      propertyType: nextFundingType === 'عقار' ? current.propertyType : 'شقة',
+      propertyValue: ['عقار', 'رهن'].includes(nextFundingType) ? current.propertyValue : '',
+      hasDownPayment: nextFundingType === 'عقار' ? current.hasDownPayment : 'نعم',
+      downPaymentAmount: nextFundingType === 'عقار' ? current.downPaymentAmount : '',
+      hasPropertyTitle: nextFundingType === 'رهن' ? current.hasPropertyTitle : 'نعم',
     }));
   };
 
@@ -173,6 +202,12 @@ export default function Eligibility() {
           hasSimahIssues:  isPersonalFunding ? form.hasSimahIssues === 'نعم' : false,
           hasServiceStop:  isPersonalFunding ? form.hasServiceStop === 'نعم' : false,
           personalNationality: isPersonalFunding ? form.personalNationality : 'سعودي',
+          applicantCategory: isPropertyFunding ? form.applicantCategory : '',
+          propertyValue: isPropertyFunding ? (Number(form.propertyValue) || 0) : 0,
+          monthlyIncome: isPropertyFunding ? (Number(isEmployeeApplicant ? form.salaryAmount : form.monthlyIncome) || 0) : 0,
+          hasDownPayment: isRealEstateFunding ? form.hasDownPayment === 'نعم' : false,
+          downPaymentAmount: isRealEstateFunding ? (Number(form.downPaymentAmount) || 0) : 0,
+          hasPropertyTitle: isMortgageFunding ? form.hasPropertyTitle === 'نعم' : false,
         }),
       });
       if (res.ok) {
@@ -186,11 +221,14 @@ export default function Eligibility() {
   const cashEligibleAlternative = checked && result?.entities?.length > 0;
   const declarationEligible = checked && isTaxFunding && form.hasRequiredTaxReturns === 'نعم';
   const personalEligible = checked && isPersonalFunding && result?.eligible;
-  const eligible = isTaxFunding ? declarationEligible : (isPersonalFunding ? personalEligible : cashEligibleAlternative);
+  const propertyEligible = checked && isPropertyFunding && result?.eligible;
+  const eligible = isTaxFunding ? declarationEligible : (isPersonalFunding ? personalEligible : (isPropertyFunding ? propertyEligible : cashEligibleAlternative));
   const statusTitle = isTaxFunding
     ? (declarationEligible ? 'أنت مؤهل لتمويل الإقرارات' : 'أنت غير مؤهل لتمويل الإقرارات حالياً')
     : isPersonalFunding
       ? (personalEligible ? 'أنت مؤهل للتمويل الشخصي' : 'أنت غير مؤهل للتمويل الشخصي حالياً')
+    : isPropertyFunding
+      ? (propertyEligible ? `أنت مؤهل مبدئياً لتمويل ${form.fundingType}` : `أنت غير مؤهل مبدئياً لتمويل ${form.fundingType}`)
     : (eligible ? 'المنشأة مؤهلة للتمويل' : 'المنشأة غير مؤهلة حالياً');
   const statusSubtitle = isTaxFunding
     ? (declarationEligible
@@ -202,6 +240,10 @@ export default function Eligibility() {
       ? (personalEligible
           ? `الجنسية ${form.personalNationality}، الراتب ${SAR(Number(form.salaryAmount) || 0)}، والمديونية ضمن 33% ولا توجد موانع تنفيذية أو تعثرات.`
           : 'يشترط للتمويل الشخصي: سعودي، راتب 4,000 ر.س فأعلى، مديونية لا تتجاوز 33%، ولا يوجد تعثر أو إيقاف خدمات أو سند تنفيذي.')
+    : isPropertyFunding
+      ? (propertyEligible
+          ? `تمت مطابقة بيانات ${form.fundingType} على فئة ${form.applicantCategory} مع قيمة أصل ${SAR(Number(form.propertyValue) || 0)}.`
+          : `تم فحص مسار ${form.fundingType} لفئة ${form.applicantCategory} بناءً على قيمة الأصل والدخل أو دخل النشاط والاشتراطات الأساسية.`)
     : (eligible
         ? `وجدنا ${result.entities.length} جهة أو مسار تمويلي مناسب`
         : 'لا تستوفي المنشأة شروط التمويل المتاحة حالياً');
@@ -231,8 +273,12 @@ export default function Eligibility() {
                 <Select value={form.fundingType} onChange={handleFundingTypeChange} options={FUNDING_TYPES} />
               </Field>
               {!isPersonalFunding ? (
-                <Field label="نوع المنشأة">
+                <Field label={isPropertyFunding && !isBusinessApplicant ? 'فئة المتقدم' : 'نوع المنشأة'}>
+                  {isPropertyFunding && !isBusinessApplicant ? (
+                    <Select value={form.applicantCategory} onChange={set('applicantCategory')} options={APPLICANT_CATEGORY_OPTIONS} />
+                  ) : (
                   <Select value={form.entityType} onChange={set('entityType')} options={ENTITY_TYPES} />
+                  )}
                 </Field>
               ) : (
                 <Field label="اسم الموظف">
@@ -249,7 +295,7 @@ export default function Eligibility() {
               )}
             </div>
 
-            {!isPersonalFunding ? (
+            {!isPersonalFunding && !isPropertyFunding ? (
               <div className="grid grid-cols-2 gap-3">
                 <Field label="نوع الملكية">
                   <Select value={form.ownershipType} onChange={set('ownershipType')} options={OWNERSHIP_TYPES} />
@@ -263,6 +309,43 @@ export default function Eligibility() {
                   />
                 </Field>
               </div>
+            ) : isPropertyFunding ? (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="فئة المتقدم">
+                    <Select value={form.applicantCategory} onChange={set('applicantCategory')} options={APPLICANT_CATEGORY_OPTIONS} />
+                  </Field>
+                  <Field label={isBusinessApplicant ? 'نوع ملكية المنشأة' : 'الجنسية'}>
+                    <Select value={form.ownershipType} onChange={set('ownershipType')} options={OWNERSHIP_TYPES} />
+                  </Field>
+                </div>
+
+                {isBusinessApplicant ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="اسم المنشأة">
+                      <input value={form.businessName} onChange={set('businessName')} placeholder="اسم المنشأة" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none" />
+                    </Field>
+                    <Field label="اسم المالك أو مقدم الطلب">
+                      <input value={form.ownerName} onChange={set('ownerName')} placeholder="اسم مقدم الطلب" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none" />
+                    </Field>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label={isEmployeeApplicant ? 'اسم الموظف' : 'اسم العميل'}>
+                      <input value={form.applicantName} onChange={set('applicantName')} placeholder={isEmployeeApplicant ? 'اسم الموظف' : 'اسم العميل'} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none" />
+                    </Field>
+                    {isEmployeeApplicant ? (
+                      <Field label="جهة العمل">
+                        <input value={form.employerName} onChange={set('employerName')} placeholder="جهة العمل" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none" />
+                      </Field>
+                    ) : (
+                      <Field label="الدخل الشهري">
+                        <NumberInput value={form.monthlyIncome} onChange={set('monthlyIncome')} placeholder="مثال: 9000" />
+                      </Field>
+                    )}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 <Field label="الجنسية">
@@ -349,7 +432,48 @@ export default function Eligibility() {
               </>
             )}
 
-            {!isPosFunding && !isCashFunding && !isTaxFunding && !isPersonalFunding && (
+            {isPropertyFunding && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  {isEmployeeApplicant && (
+                    <Field label="الراتب الشهري (ر.س)">
+                      <NumberInput value={form.salaryAmount} onChange={set('salaryAmount')} placeholder="5000" />
+                    </Field>
+                  )}
+                  {isBusinessApplicant && (
+                    <Field label="دخل النشاط السنوي التقريبي (ر.س)">
+                      <NumberInput value={form.totalDeposit} onChange={set('totalDeposit')} placeholder="500000" />
+                    </Field>
+                  )}
+                  {isRealEstateFunding && (
+                    <Field label="نوع العقار">
+                      <Select value={form.propertyType} onChange={set('propertyType')} options={PROPERTY_TYPES} />
+                    </Field>
+                  )}
+                  <Field label={isRealEstateFunding ? 'قيمة العقار (ر.س)' : 'قيمة العقار أو أصل الرهن (ر.س)'}>
+                    <NumberInput value={form.propertyValue} onChange={set('propertyValue')} placeholder="مثال: 850000" />
+                  </Field>
+                </div>
+                {isRealEstateFunding ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="هل توجد دفعة أولى؟">
+                      <Select value={form.hasDownPayment} onChange={set('hasDownPayment')} options={FINANCIAL_STATEMENT_OPTIONS} />
+                    </Field>
+                    {form.hasDownPayment === 'نعم' && (
+                      <Field label="قيمة الدفعة الأولى (ر.س)">
+                        <NumberInput value={form.downPaymentAmount} onChange={set('downPaymentAmount')} placeholder="مثال: 100000" />
+                      </Field>
+                    )}
+                  </div>
+                ) : (
+                  <Field label="هل صك العقار أو بياناته جاهزة؟">
+                    <Select value={form.hasPropertyTitle} onChange={set('hasPropertyTitle')} options={FINANCIAL_STATEMENT_OPTIONS} />
+                  </Field>
+                )}
+              </>
+            )}
+
+            {!isPosFunding && !isCashFunding && !isTaxFunding && !isPersonalFunding && !isPropertyFunding && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="إجمالي الإيداعات (ر.س)">
@@ -365,7 +489,7 @@ export default function Eligibility() {
               </>
             )}
 
-            {!isPersonalFunding && (
+            {!isPersonalFunding && !isPropertyFunding && (
               <Field label="عمر السجل التجاري (شهر)">
                 <NumberInput value={form.recordAgeMonths} onChange={set('recordAgeMonths')} placeholder="24" />
               </Field>
@@ -374,6 +498,8 @@ export default function Eligibility() {
             <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-[11px] text-gray-500 leading-6">
               {isPersonalFunding
                 ? 'في التمويل الشخصي نعرض فقط بيانات الموظف الأساسية والشروط المانعة حتى تكون النتيجة واضحة وسريعة.'
+                : isPropertyFunding
+                  ? `في ${form.fundingType} نعرض فقط البيانات المناسبة لفئة المتقدم ونوع الأصل المطلوب تمويله.`
                 : 'يتم الاحتساب على آخر 12 شهر تلقائياً. نعرض فقط الحقول المرتبطة بنوع التمويل المختار لتقليل التشتت في الإدخال.'}
             </div>
 
@@ -416,10 +542,10 @@ export default function Eligibility() {
               {!isPersonalFunding && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                 <StatCard
-                  icon={Wallet}
+                  icon={isPropertyFunding ? Home : Wallet}
                   label="التمويل التقريبي"
                   value={SAR(result?.estimatedFundingAmount || 0)}
-                  sub="قد يصل إلى 60% من الأساس المالي المعتمد"
+                  sub={isPropertyFunding ? 'تقدير أولي بناءً على قيمة الأصل والمدخلات الحالية' : 'قد يصل إلى 60% من الأساس المالي المعتمد'}
                   tone="blue"
                 />
                 <StatCard
