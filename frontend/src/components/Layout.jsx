@@ -461,7 +461,10 @@ export default function Layout({ children }) {
           dir="rtl"
         >
           <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-lg">
-            {notifTypeIcon(newNotifToast.type)}
+            {(() => {
+              const { Icon } = notifTypeMeta(newNotifToast.type);
+              return <Icon size={18} className="text-white" />;
+            })()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-white font-bold text-sm">تنبيه جديد</div>
