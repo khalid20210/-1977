@@ -39,44 +39,179 @@ const accountUpload = multer({ storage: makeStorage('account-statements'), fileF
 }, limits: { fileSize: 25 * 1024 * 1024 } });
 const taxUpload = multer({ storage: makeStorage('tax-documents'), fileFilter, limits: { fileSize: 25 * 1024 * 1024 } });
 
-// Helper: check eligibility against funding entities
-async function checkEligibility(totalPos, totalDeposit, totalTransfer, months, fundingType, bankName = '', recordAgeMonths = 0, ownershipType = 'سعودي', entityType = 'شركة') {
+function normalizeText(value = '') {
+  return String(value).trim().toLowerCase();
+}
+
+function isRajhiBank(bankName = '') {
+  const normalized = normalizeText(bankName);
+  return normalized.includes('راجحي') || normalized.includes('alrajhi') || normalized.includes('rajhi');
+}
+
+function isForeignOwnership(ownershipType = '') {
+  return ['مستثمر', 'مختلط', 'أجنبي', 'اجنبي'].includes(String(ownershipType).trim());
+}
+
+function classifyEntityType(entityType = '') {
+  const value = String(entityType).trim();
+  if (['مؤسسة', 'شخص واحد', 'شركة شخص واحد'].includes(value)) return 'sole';
+  if (['شركة متعددة الشركاء', 'شركة', 'أكثر من شريك'].includes(value)) return 'multi';
+  return 'multi';
+}
+
+function pickEntity(entities, keywords, fallbackName, notes) {
+  const match = entities.find(entity => keywords.some(keyword => normalizeText(entity.name).includes(normalizeText(keyword))));
+  if (match) {
+    return { ...match, notes: match.notes || notes };
+  }
+  return { id: fallbackName, name: fallbackName, notes };
+}
+
+// Helper: check eligibility against financing rules
+async function checkEligibility(
+  totalPos,
+  totalDeposit,
+  totalTransfer,
+  months,
+  fundingType,
+  bankName = '',
+  recordAgeMonths = 0,
+  ownershipType = 'سعودي',
+  entityType = 'شركة',
+  liabilitiesAmount = 0,
+  profitRatio = 0,
+) {
   const entities = await db.prepare('SELECT * FROM funding_entities WHERE is_active = 1 ORDER BY priority DESC').all();
+  const isRajhi = isRajhiBank(bankName);
+  const isForeign = isForeignOwnership(ownershipType);
+  const entityClass = classifyEntityType(entityType);
+  const annualRevenue = Math.max(Number(totalPos) || 0, Number(totalDeposit) || 0, Number(totalTransfer) || 0, (Number(totalDeposit) || 0) + (Number(totalTransfer) || 0));
+  const combinedMovement = (Number(totalDeposit) || 0) + (Number(totalTransfer) || 0);
+  const debtAmount = Number(liabilitiesAmount) || 0;
+  const debtRatio = annualRevenue > 0 ? Math.round((debtAmount / annualRevenue) * 100) : 0;
+  const debtHealthy = annualRevenue > 0 && debtAmount <= annualRevenue * 0.3 && debtAmount < annualRevenue;
+  const successProbability = debtHealthy ? 85 : 65;
+  const estimatedFundingAmount = Math.round((Number(totalPos) > 0 ? Number(totalPos) : annualRevenue) * 0.6);
+  const minAgeMonths = isForeign ? 36 : 24;
+  const tips = [];
+  const matchedRules = [];
   let eligibleEntities = [];
-  let eligibleTypes = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
+  let isEligible = false;
+
+  const rajhiSolePosEligible = !isForeign && entityClass === 'sole' && isRajhi && recordAgeMonths >= 7 && Number(totalPos) >= 700000;
+  const rajhiSoleRevenueEligible = !isForeign && entityClass === 'sole' && isRajhi && recordAgeMonths >= 24 && annualRevenue >= 3000000;
+  const rajhiMultiPosEligible = !isForeign && entityClass === 'multi' && isRajhi && recordAgeMonths >= 24 && Number(totalPos) >= 1000000;
+  const foreignRajhiPosEligible = isForeign && isRajhi && recordAgeMonths >= 36 && Number(totalPos) >= 1000000;
+  const otherBankPosEligible = !isRajhi && recordAgeMonths >= minAgeMonths && Number(totalPos) >= 2000000;
+  const movementEligible = combinedMovement >= 3000000 && recordAgeMonths >= minAgeMonths;
 
   if (fundingType === 'نقاط بيع') {
-    // Special logic for نقاط بيع
-    const isRajhi = bankName && bankName.toLowerCase().includes('راجحي');
-    const posLast12Months = totalPos; // Assume totalPos is for last 12 months
-    const isSaudi = ownershipType === 'سعودي';
-    const isIndividualOrInstitution = ['شخص واحد', 'مؤسسة'].includes(entityType);
-
-    if (posLast12Months >= 1500000) {
-      // Eligible for مصرف الراجحي regardless of bank
-      eligibleEntities = entities.filter(e => e.name.toLowerCase().includes('راجحي'));
-    } else if (posLast12Months >= 700000 && recordAgeMonths >= 7 && isRajhi) {
-      // Eligible for أمكان or مصرف الراجحي, but أمكان only for Saudi individual/institution
-      let candidates = entities.filter(e => e.name.toLowerCase().includes('راجحي'));
-      if (isSaudi && isIndividualOrInstitution) {
-        candidates = candidates.concat(entities.filter(e => e.name.toLowerCase().includes('أمكان')));
-      }
-      eligibleEntities = candidates;
-    } else if (!isRajhi && posLast12Months >= 500000 && posLast12Months < 1000000 && recordAgeMonths >= 24) {
-      // Eligible for شركة الأولى للتمويل
-      eligibleEntities = entities.filter(e => e.name.toLowerCase().includes('الأولى'));
-    } else {
-      // Not eligible for نقاط بيع
-      eligibleTypes = eligibleTypes.filter(t => t !== 'نقاط بيع');
-      eligibleEntities = [];
+    if (rajhiSolePosEligible || rajhiSoleRevenueEligible) {
+      isEligible = true;
+      matchedRules.push('مؤسسة أو شركة شخص واحد سعودية على الراجحي');
+      eligibleEntities = [
+        pickEntity(entities, ['راجحي'], 'مصرف الراجحي', 'حساب راجحي مع عمر يبدأ من 7 أشهر عند نقاط البيع المؤهلة، أو عمر سنتين فأكثر مع إيرادات 3 مليون فأعلى.'),
+        pickEntity(entities, ['أمكان', 'امكان'], 'أمكان', 'يناسب حالات المؤسسة أو شركة الشخص الواحد السعودية عند تحقق شروط الراجحي الأساسية.'),
+      ];
+    } else if (rajhiMultiPosEligible) {
+      isEligible = true;
+      matchedRules.push('شركة متعددة الشركاء سعودية على الراجحي');
+      eligibleEntities = [
+        pickEntity(entities, ['راجحي'], 'مصرف الراجحي', 'شركة سعودية متعددة الشركاء بحساب راجحي ونقاط بيع لا تقل عن 1,000,000 ر.س وعمر سجل 24 شهراً فأكثر.'),
+      ];
+    } else if (foreignRajhiPosEligible) {
+      isEligible = true;
+      matchedRules.push('شركة مستثمر/أجنبية على الراجحي');
+      eligibleEntities = [
+        pickEntity(entities, ['راجحي'], 'مصرف الراجحي', 'للمنشآت الاستثمارية أو الأجنبية بعمر سجل 36 شهراً فأكثر، مع تطبيق اشتراطات إضافية على القوائم المالية.'),
+      ];
+    } else if (otherBankPosEligible) {
+      isEligible = true;
+      matchedRules.push('نقاط بيع من بنك خارج الراجحي');
+      eligibleEntities = [
+        pickEntity(entities, ['الأولى', 'الاولى'], 'الأولى للتمويل', 'للحسابات خارج الراجحي: عمر 24 شهراً للسعودي و36 شهراً للمستثمر/الأجنبي، وإجمالي نقاط بيع لا يقل عن 2,000,000 ر.س.'),
+      ];
     }
-  } else {
-    // Other funding types will be handled later via admin configuration and AI
-    eligibleTypes = eligibleTypes.filter(t => t !== fundingType);
-    eligibleEntities = [];
+
+    if (!isEligible) {
+      if (isRajhi && entityClass === 'sole' && Number(totalPos) < 700000 && annualRevenue < 3000000) {
+        tips.push('للمؤسسة أو شركة الشخص الواحد على الراجحي: ارفع نقاط البيع إلى 700,000 ر.س على الأقل أو ارفع الإيرادات إلى 3,000,000 ر.س مع عمر سنتين فأكثر.');
+      }
+      if (isRajhi && entityClass === 'multi' && Number(totalPos) < 1000000) {
+        tips.push('للشركة متعددة الشركاء على الراجحي: إجمالي نقاط البيع المطلوب لا يقل عن 1,000,000 ر.س لآخر 12 شهر.');
+      }
+      if (!isRajhi && Number(totalPos) < 2000000) {
+        tips.push('للحسابات خارج الراجحي: إجمالي نقاط البيع المطلوب لا يقل عن 2,000,000 ر.س لآخر 12 شهر.');
+      }
+      if (recordAgeMonths < minAgeMonths && !(isRajhi && entityClass === 'sole' && !isForeign)) {
+        tips.push(`عمر السجل الحالي ${recordAgeMonths} شهر، بينما المطلوب ${minAgeMonths} شهر لهذه الحالة.`);
+      }
+      if (isForeign && recordAgeMonths < 36) {
+        tips.push('للمستثمر أو المنشأة الأجنبية: عمر السجل المطلوب 36 شهراً في نقاط البيع.');
+      }
+    }
   }
 
-  return { entities: eligibleEntities, types: eligibleTypes };
+  if (!isEligible && (fundingType !== 'نقاط بيع' || combinedMovement > 0)) {
+    if (movementEligible) {
+      isEligible = true;
+      matchedRules.push(isRajhi ? 'حركة حساب إيداع وتحويل على الراجحي' : 'حركة حساب إيداع وتحويل خارج الراجحي');
+      eligibleEntities = [
+        pickEntity(
+          entities,
+          [isRajhi ? 'راجحي' : 'الأولى', 'راجحي', 'الأولى'],
+          isRajhi ? 'مصرف الراجحي' : 'جهات تمويل حسب دراسة الملف',
+          isRajhi
+            ? 'تمويل قائم على حركة الإيداع والتحويل مع اشتراط عمر 24 شهراً للسعودي و36 شهراً للمستثمر أو الأجنبي.'
+            : 'للحسابات خارج الراجحي يطبق حد العمر نفسه، وتخضع الملاءمة النهائية لدراسة الملف.'
+        ),
+      ];
+    } else {
+      if (combinedMovement < 3000000) {
+        tips.push('في تمويل الإيداع والتحويل: نوصي برفع حركة الحساب إلى 3,000,000 ر.س فأكثر لتحسين الأهلية.');
+      }
+      if (recordAgeMonths < minAgeMonths) {
+        tips.push(`في حركة الحساب: العمر المطلوب ${minAgeMonths} شهر لهذه الحالة.`);
+      }
+    }
+  }
+
+  if (months < 6) {
+    tips.push('يفضل تقديم كشف حساب لـ 6 أشهر على الأقل، والأفضل 12 شهراً عند نقاط البيع وحركة الحساب.');
+  }
+
+  if (!debtHealthy && annualRevenue > 0) {
+    tips.push('المديونيات الحالية تتجاوز 30% من الإيرادات أو ليست أقل من الإيرادات، لذا تنخفض نسبة النجاح التقديرية إلى 65%.');
+  } else if (annualRevenue > 0) {
+    tips.push('المديونيات ضمن النطاق الصحي: لا تتجاوز 30% من الإيرادات وأقل من الإيرادات السنوية.' );
+  }
+
+  const guaranteeNote = isForeign
+    ? (Number(profitRatio) >= 8
+        ? 'القوائم المالية بربحية 8% فأكثر، لذلك لا يتوقع طلب رهن أو كفيل من ناحية الربحية.'
+        : 'للمنشآت الاستثمارية أو الأجنبية قد يطلب كفيل أو رهن إذا كانت ربحية القوائم أقل من 8% أو الربح بسيطاً.')
+    : 'الربحية الجيدة في القوائم المالية ترفع فرصة الاعتماد وتحسن التسعير النهائي.';
+
+  return {
+    eligible: isEligible,
+    entities: isEligible ? eligibleEntities : [],
+    types: isEligible ? [fundingType] : [],
+    tips,
+    matchedRules,
+    annualRevenue,
+    combinedMovement,
+    interestRateMin: 7,
+    interestRateMax: 14,
+    interestRateLabel: '7% - 14%',
+    estimatedFundingAmount,
+    debtAmount,
+    debtRatio,
+    debtHealthy,
+    successProbability,
+    profitRatio: Number(profitRatio) || 0,
+    needsCollateral: isForeign && Number(profitRatio) < 8,
+    guaranteeNote,
+  };
 }
 
 // Helper: check and update docs status
@@ -107,25 +242,18 @@ router.post('/eligibility-check', authMiddleware, async (req, res) => {
     const {
       totalPos = 0, totalDeposit = 0, totalTransfer = 0,
       months = 12, fundingType = 'نقاط بيع', bankName = '',
-      recordAgeMonths = 0, ownershipType = 'سعودي', entityType = 'شركة'
+      recordAgeMonths = 0, ownershipType = 'سعودي', entityType = 'شركة',
+      liabilitiesAmount = 0, profitRatio = 0,
     } = req.body;
 
     const result = await checkEligibility(
       Number(totalPos), Number(totalDeposit), Number(totalTransfer),
       Number(months), fundingType, bankName,
-      Number(recordAgeMonths), ownershipType, entityType
+      Number(recordAgeMonths), ownershipType, entityType,
+      Number(liabilitiesAmount), Number(profitRatio)
     );
 
-    // Build recommendations
-    const tips = [];
-    if (fundingType === 'نقاط بيع') {
-      if (Number(totalPos) < 500000)  tips.push('نقاط البيع أقل من 500 ألف ر.س — يُنصح برفع حجم المبيعات');
-      if (Number(totalPos) < 1500000) tips.push('لتحقيق أعلى أهلية: نقاط البيع يجب أن تتجاوز 1.5 مليون ر.س سنوياً');
-      if (Number(recordAgeMonths) < 24) tips.push('عمر السجل التجاري أقل من سنتين — بعض الجهات تشترط 24 شهراً');
-    }
-    if (Number(months) < 6) tips.push('يُفضّل تقديم كشف حساب لـ 6 أشهر على الأقل');
-
-    res.json({ ...result, tips });
+    res.json(result);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطأ في فحص الأهلية' });

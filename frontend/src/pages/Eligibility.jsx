@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   CheckCircle, XCircle, AlertCircle, Search, Building2,
-  Loader, Lightbulb, ChevronDown, ClipboardCheck
+  Loader, Lightbulb, ChevronDown, ClipboardCheck, Percent, Wallet, ShieldCheck, Landmark
 } from 'lucide-react';
 
 const FUNDING_TYPES = ['نقاط بيع', 'كاش', 'إقرارات ضريبية', 'رهن', 'أسطول', 'تمويل شخصي', 'عقار', 'تمويل تجاري'];
-const ENTITY_TYPES  = ['شركة', 'مؤسسة', 'شخص واحد'];
+const ENTITY_TYPES  = ['مؤسسة', 'شركة شخص واحد', 'شركة متعددة الشركاء'];
 const OWNERSHIP_TYPES = ['سعودي', 'مختلط', 'مستثمر'];
 
 const SAR = n => `${Number(n).toLocaleString('ar-SA', { maximumFractionDigits: 0 })} ر.س`;
@@ -48,12 +48,36 @@ function NumberInput({ value, onChange, placeholder = '0' }) {
   );
 }
 
+function StatCard({ icon: Icon, label, value, sub, tone = 'blue' }) {
+  const tones = {
+    blue: 'bg-blue-50 border-blue-100 text-blue-700',
+    green: 'bg-green-50 border-green-100 text-green-700',
+    amber: 'bg-amber-50 border-amber-100 text-amber-700',
+    purple: 'bg-purple-50 border-purple-100 text-purple-700',
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 ${tones[tone] || tones.blue}`}>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-white/80 flex items-center justify-center border border-current/10">
+          <Icon size={18} />
+        </div>
+        <div>
+          <p className="text-xs font-semibold opacity-80">{label}</p>
+          <p className="text-lg font-black mt-0.5">{value}</p>
+          {sub && <p className="text-[11px] mt-1 opacity-80">{sub}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Eligibility() {
   const { authFetch, isAdmin } = useAuth();
 
   const [form, setForm] = useState({
     fundingType:    'نقاط بيع',
-    entityType:     'شركة',
+    entityType:     'مؤسسة',
     ownershipType:  'سعودي',
     bankName:       '',
     totalPos:       '',
@@ -61,6 +85,8 @@ export default function Eligibility() {
     totalTransfer:  '',
     months:         '12',
     recordAgeMonths:'24',
+    liabilitiesAmount: '',
+    profitRatio: '',
   });
 
   const [result,  setResult]  = useState(null);
@@ -87,6 +113,8 @@ export default function Eligibility() {
           recordAgeMonths: Number(form.recordAgeMonths) || 0,
           ownershipType:   form.ownershipType,
           entityType:      form.entityType,
+          liabilitiesAmount:Number(form.liabilitiesAmount) || 0,
+          profitRatio:     Number(form.profitRatio) || 0,
         }),
       });
       if (res.ok) {
@@ -166,6 +194,19 @@ export default function Eligibility() {
               </Field>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="المديونيات على المنشأة (ر.س)">
+                <NumberInput value={form.liabilitiesAmount} onChange={set('liabilitiesAmount')} placeholder="0" />
+              </Field>
+              <Field label="نسبة الربح بالقوائم (%)">
+                <NumberInput value={form.profitRatio} onChange={set('profitRatio')} placeholder="8" />
+              </Field>
+            </div>
+
+            <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-[11px] text-gray-500 leading-6">
+              المديونيات المفضلة: لا تتجاوز 30% من الإيرادات وتكون أقل من إجمالي الإيرادات. للمستثمر أو المنشأة الأجنبية قد يطلب كفيل أو رهن إذا كانت ربحية القوائم أقل من 8%.
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -198,11 +239,58 @@ export default function Eligibility() {
                   </p>
                   <p className={`text-xs mt-0.5 ${eligible ? 'text-green-600' : 'text-red-500'}`}>
                     {eligible
-                      ? `وجدنا ${result.entities.length} جهة تمويلية مناسبة`
+                      ? `وجدنا ${result.entities.length} جهة أو مسار تمويلي مناسب`
                       : 'لا تستوفي المنشأة شروط التمويل المتاحة حالياً'}
                   </p>
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                <StatCard
+                  icon={Wallet}
+                  label="التمويل التقريبي"
+                  value={SAR(result?.estimatedFundingAmount || 0)}
+                  sub="قد يصل إلى 60% من الأساس المالي المعتمد"
+                  tone="blue"
+                />
+                <StatCard
+                  icon={Percent}
+                  label="الفائدة المتوقعة"
+                  value={result?.interestRateLabel || '7% - 14%'}
+                  sub="تختلف حسب الجهة والملف النهائي"
+                  tone="amber"
+                />
+                <StatCard
+                  icon={ShieldCheck}
+                  label="نسبة نجاح تقديرية"
+                  value={`${result?.successProbability || 0}%`}
+                  sub={result?.debtHealthy ? 'المديونيات ضمن النطاق المفضل' : 'المديونيات تضعف الملف حالياً'}
+                  tone={result?.debtHealthy ? 'green' : 'purple'}
+                />
+                <StatCard
+                  icon={Landmark}
+                  label="نسبة المديونية"
+                  value={`${result?.debtRatio || 0}%`}
+                  sub={(result?.annualRevenue || 0) > 0 ? `مقارنة بإيراد تقريبي ${SAR(result?.annualRevenue || 0)}` : 'أدخل إيرادات أو نقاط بيع لاحتسابها'}
+                  tone={result?.debtHealthy ? 'green' : 'amber'}
+                />
+              </div>
+
+              {!!result?.matchedRules?.length && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="font-bold text-gray-800 mb-3">السيناريو المطابق</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {result.matchedRules.map((rule) => (
+                      <span key={rule} className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-semibold">
+                        {rule}
+                      </span>
+                    ))}
+                  </div>
+                  {result?.guaranteeNote && (
+                    <p className="text-xs text-gray-500 mt-3 leading-6">{result.guaranteeNote}</p>
+                  )}
+                </div>
+              )}
 
               {/* Eligible Entities — للأدمن فقط */}
               {eligible && isAdmin && (
@@ -239,7 +327,7 @@ export default function Eligibility() {
                   <CheckCircle size={20} className="text-blue-500 shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold text-blue-800 text-sm">المنشأة مؤهلة للتمويل</p>
-                    <p className="text-xs text-blue-600 mt-1">يرجى رفع طلب وإرسال الملف الكامل — سيتولى المسؤول تحديد الجهة التمويلية المناسبة</p>
+                    <p className="text-xs text-blue-600 mt-1">يرجى رفع طلب وإرسال الملف الكامل — سيتولى المسؤول تحديد الجهة التمويلية المناسبة. التمويل التقريبي والفائدة المعروضة هنا استرشادية فقط.</p>
                   </div>
                 </div>
               )}
