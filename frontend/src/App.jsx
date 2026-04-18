@@ -19,6 +19,63 @@ import Eligibility from './pages/Eligibility';
 import Commissions from './pages/Commissions';
 import Establishments from './pages/Establishments';
 
+const RUNTIME_RECOVERY_KEY = 'jenanbiz-runtime-recovery';
+
+class RuntimeRecoveryBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    const alreadyReloaded = sessionStorage.getItem(RUNTIME_RECOVERY_KEY) === '1';
+    const message = String(error?.message || '');
+    const shouldRetry = !alreadyReloaded && (
+      error?.name === 'ReferenceError' ||
+      message.includes('is not defined') ||
+      message.includes('Failed to fetch dynamically imported module')
+    );
+
+    if (shouldRetry) {
+      sessionStorage.setItem(RUNTIME_RECOVERY_KEY, '1');
+      window.location.reload();
+      return;
+    }
+
+    sessionStorage.removeItem(RUNTIME_RECOVERY_KEY);
+  }
+
+  handleRefresh = () => {
+    sessionStorage.removeItem(RUNTIME_RECOVERY_KEY);
+    window.location.reload();
+  };
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-6" dir="rtl">
+        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-xl font-black text-gray-900">حدث خطأ أثناء تحميل الصفحة</h1>
+          <p className="mt-2 text-sm leading-7 text-gray-500">
+            غالباً تم نشر تحديث جديد بينما كانت الصفحة مفتوحة. اضغط تحديث لإعادة تحميل النسخة الأحدث.
+          </p>
+          <button
+            onClick={this.handleRefresh}
+            className="mt-5 w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700"
+          >
+            تحديث الصفحة
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
 function PrivateRoute({ children, adminOnly = false }) {
   const { user, loading, token } = useAuth();
   if (loading) return (
@@ -87,7 +144,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <RuntimeRecoveryBoundary>
+        <AppRoutes />
+      </RuntimeRecoveryBoundary>
     </AuthProvider>
   );
 }
