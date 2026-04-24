@@ -55,7 +55,7 @@ router.delete('/contacts/:id', hasPermission('manage_funding'), async (req, res)
 router.get('/product-types', authMiddleware, (req, res) => { res.json(PRODUCT_TYPES); });
 
 // ===== COMPANIES =====
-router.get('/companies', adminMiddleware, async (req, res) => {
+router.get('/companies', hasPermission('manage_establishments'), async (req, res) => {
   try {
     const { search } = req.query;
     let query = `SELECT c.*, u.name as employee_name, u.phone as employee_phone, r.status as request_status, r.funding_entity_id, fe.name as funding_entity_name FROM companies c LEFT JOIN users u ON c.user_id = u.id LEFT JOIN requests r ON c.request_id = r.id LEFT JOIN funding_entities fe ON r.funding_entity_id = fe.id`;
@@ -67,7 +67,7 @@ router.get('/companies', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في استرجاع المنشآت' }); }
 });
 
-router.post('/companies', adminMiddleware, async (req, res) => {
+router.post('/companies', hasPermission('manage_establishments'), async (req, res) => {
   try {
     const { company_name, owner_name, owner_phone, entity_type } = req.body;
     if (!company_name?.trim()) return res.status(400).json({ error: 'اسم المنشأة مطلوب' });
@@ -76,7 +76,7 @@ router.post('/companies', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في إضافة المنشأة' }); }
 });
 
-router.put('/companies/:id', adminMiddleware, async (req, res) => {
+router.put('/companies/:id', hasPermission('manage_establishments'), async (req, res) => {
   try {
     const { company_name, owner_name, owner_phone, entity_type } = req.body;
     await db.prepare(`UPDATE companies SET company_name = COALESCE(?, company_name), owner_name = COALESCE(?, owner_name), owner_phone = COALESCE(?, owner_phone), entity_type = COALESCE(?, entity_type), updated_at = NOW() WHERE id = ?`).run(company_name || null, owner_name || null, owner_phone || null, entity_type || null, req.params.id);
@@ -84,7 +84,7 @@ router.put('/companies/:id', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في التحديث' }); }
 });
 
-router.post('/companies/bulk-delete', adminMiddleware, async (req, res) => {
+router.post('/companies/bulk-delete', hasPermission('manage_establishments'), async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
     if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد منشآت للحذف' });
@@ -102,7 +102,7 @@ router.post('/companies/bulk-delete', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في الحذف الجماعي' }); }
 });
 
-router.delete('/companies/:id', adminMiddleware, async (req, res) => {
+router.delete('/companies/:id', hasPermission('manage_establishments'), async (req, res) => {
   try {
     const company = await db.prepare('SELECT id, user_id FROM companies WHERE id = ?').get(req.params.id);
     if (!company) return res.status(404).json({ error: 'المنشأة غير موجودة' });

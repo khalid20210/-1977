@@ -104,13 +104,13 @@ function AppRoutes() {
         <PrivateRoute><Layout><Attendance /></Layout></PrivateRoute>
       } />
       <Route path="/attendance-admin" element={
-        <PrivateRoute adminOnly><Layout><AttendanceAdmin /></Layout></PrivateRoute>
+        <PrivateRoute anyPermissions={['view_attendance_admin', 'delete_attendance_records']}><Layout><AttendanceAdmin /></Layout></PrivateRoute>
       } />
       <Route path="/performance" element={
-        <PrivateRoute adminOnly><Layout><PerformanceAdmin /></Layout></PrivateRoute>
+        <PrivateRoute permission="view_performance"><Layout><PerformanceAdmin /></Layout></PrivateRoute>
       } />
       <Route path="/reports" element={
-        <PrivateRoute adminOnly><Layout><Reports /></Layout></PrivateRoute>
+        <PrivateRoute permission="view_reports"><Layout><Reports /></Layout></PrivateRoute>
       } />
       <Route path="/eligibility" element={
         <PrivateRoute><Layout><Eligibility /></Layout></PrivateRoute>
@@ -119,7 +119,7 @@ function AppRoutes() {
         <PrivateRoute><Layout><Commissions /></Layout></PrivateRoute>
       } />
       <Route path="/establishments" element={
-        <PrivateRoute adminOnly><Layout><Establishments /></Layout></PrivateRoute>
+        <PrivateRoute permission="manage_establishments"><Layout><Establishments /></Layout></PrivateRoute>
       } />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

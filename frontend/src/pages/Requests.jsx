@@ -57,6 +57,13 @@ const INPUT_CLASS = 'w-full border border-gray-200 rounded-xl py-2.5 px-4 text-s
 const SELECT_CLASS = 'w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500';
 const LABEL_CLASS = 'block text-xs font-semibold text-gray-600 mb-1';
 
+function getWhatsAppUrl(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return null;
+  const normalized = digits.startsWith('966') ? digits : `966${digits.replace(/^0/, '')}`;
+  return `https://wa.me/${normalized}`;
+}
+
 function createInitialProductDetails(fundingType = 'نقاط بيع') {
   switch (fundingType) {
     case 'إقرارات ضريبية':
@@ -1424,6 +1431,17 @@ export default function Requests() {
                             <button onClick={() => openEdit(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-100">
                               <Edit2 size={13} /> تحديث
                             </button>
+                          )}
+                          {getWhatsAppUrl(r.owner_phone) && (
+                            <a
+                              href={getWhatsAppUrl(r.owner_phone)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-semibold hover:bg-emerald-100"
+                              title="واتساب العميل"
+                            >
+                              <Phone size={13} /> واتساب العميل
+                            </a>
                           )}
                           {canSendToFunding ? (
                             <button onClick={() => openSend(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100">

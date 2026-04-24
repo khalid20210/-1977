@@ -1,6 +1,6 @@
 ﻿const express = require('express');
 const db = require('../database');
-const { authMiddleware, adminMiddleware } = require('../middleware/authMiddleware');
+const { authMiddleware, hasAnyPermission, hasPermission } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -44,7 +44,7 @@ router.get('/my', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في جلب السجلات' }); }
 });
 
-router.get('/admin/all', adminMiddleware, async (req, res) => {
+router.get('/admin/all', hasAnyPermission(['view_attendance_admin', 'delete_attendance_records']), async (req, res) => {
   try {
     const { date_from, date_to, user_id } = req.query;
     let query = 'SELECT a.*, u.name as user_name, u.role as user_role FROM attendance a LEFT JOIN users u ON a.user_id = u.id WHERE 1=1';
@@ -58,7 +58,7 @@ router.get('/admin/all', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في جلب السجلات' }); }
 });
 
-router.get('/admin/today', adminMiddleware, async (req, res) => {
+router.get('/admin/today', hasAnyPermission(['view_attendance_admin', 'delete_attendance_records']), async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const records = await db.prepare(`SELECT a.*, u.name as user_name, u.role as user_role, u.phone as user_phone FROM attendance a LEFT JOIN users u ON a.user_id = u.id WHERE a.date = ? ORDER BY a.check_in ASC`).all(today);
@@ -68,7 +68,7 @@ router.get('/admin/today', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ' }); }
 });
 
-router.delete('/admin/:id', adminMiddleware, async (req, res) => {
+router.delete('/admin/:id', hasPermission('delete_attendance_records'), async (req, res) => {
   try {
     await db.prepare('DELETE FROM attendance WHERE id = ?').run(req.params.id);
     res.json({ message: 'تم الحذف' });

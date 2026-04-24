@@ -381,6 +381,11 @@ async function initDatabase() {
     { key: 'manage_user_permissions', label: 'إدارة صلاحيات المستخدمين', description: 'يستطيع منح وسحب الصلاحيات للمستخدمين',        category: 'المستخدمون' },
     { key: 'manage_funding',       label: '????? ?????? ?????????',       description: '?????? ????? ?????? ???? ?????? ?????????',     category: '?????? ?????????' },
     { key: 'manage_settings',      label: '?????? ?????????',             description: '?????? ????? ??????? ?????? ??????? ?????????', category: '?????????' },
+    { key: 'manage_establishments',label: 'إدارة المنشآت',               description: 'يستطيع عرض وإضافة وتعديل وحذف المنشآت',        category: 'المنشآت' },
+    { key: 'view_attendance_admin',label: 'عرض سجل الحضور',              description: 'يستطيع مشاهدة سجلات حضور الموظفين',           category: 'الحضور' },
+    { key: 'delete_attendance_records', label: 'حذف سجلات الحضور',       description: 'يستطيع حذف سجلات حضور الموظفين',              category: 'الحضور' },
+    { key: 'view_performance',     label: 'عرض تحليل الأداء',            description: 'يستطيع مشاهدة تقارير أداء الموظفين',          category: 'التقارير' },
+    { key: 'view_reports',         label: 'عرض التقارير',                description: 'يستطيع مشاهدة التقارير والتحليلات',            category: 'التقارير' },
   ];
   for (const p of defaultPermissions) {
     await pool.query(

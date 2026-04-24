@@ -686,6 +686,11 @@ router.post('/permissions/reset', adminMiddleware, async (req, res) => {
       { key: 'manage_user_permissions', label: 'إدارة صلاحيات المستخدمين', description: 'يستطيع منح وسحب الصلاحيات للمستخدمين',        category: 'المستخدمون' },
       { key: 'manage_funding',        label: 'إدارة الجهات التمويلية',       description: 'يستطيع إضافة وتعديل وحذف الجهات التمويلية',    category: 'الجهات التمويلية' },
       { key: 'manage_settings',       label: 'الوصول للإعدادات',             description: 'يستطيع تعديل إعدادات المنصة والذكاء الاصطناعي', category: 'الإعدادات' },
+      { key: 'manage_establishments', label: 'إدارة المنشآت',               description: 'يستطيع عرض وإضافة وتعديل وحذف المنشآت',        category: 'المنشآت' },
+      { key: 'view_attendance_admin', label: 'عرض سجل الحضور',              description: 'يستطيع مشاهدة سجلات حضور الموظفين',           category: 'الحضور' },
+      { key: 'delete_attendance_records', label: 'حذف سجلات الحضور',       description: 'يستطيع حذف سجلات حضور الموظفين',              category: 'الحضور' },
+      { key: 'view_performance',      label: 'عرض تحليل الأداء',            description: 'يستطيع مشاهدة تقارير أداء الموظفين',          category: 'التقارير' },
+      { key: 'view_reports',          label: 'عرض التقارير',                description: 'يستطيع مشاهدة التقارير والتحليلات',            category: 'التقارير' },
     ];
     for (const p of defaultPermissions) {
       await db.prepare('INSERT INTO permissions (key, label, description, category) VALUES (?,?,?,?) ON CONFLICT (key) DO NOTHING')
@@ -924,7 +929,7 @@ router.post('/requests/:id/upload-funding-contract', adminMiddleware, contractUp
 });
 
 // ===== PERFORMANCE =====
-router.get('/performance', adminMiddleware, async (req, res) => {
+router.get('/performance', hasPermission('view_performance'), async (req, res) => {
   try {
     const { month } = req.query;
     let dateFilter = '';
@@ -965,7 +970,7 @@ router.get('/performance', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/performance/:userId', adminMiddleware, async (req, res) => {
+router.get('/performance/:userId', hasPermission('view_performance'), async (req, res) => {
   try {
     const { month } = req.query;
     const user = await db.prepare('SELECT id, name, role, partner_type, phone, status, created_at FROM users WHERE id=?').get(req.params.userId);
@@ -1056,7 +1061,7 @@ router.get('/dashboard-stats', adminMiddleware, async (req, res) => {
 });
 
 // ===== REPORTS =====
-router.get('/reports', adminMiddleware, async (req, res) => {
+router.get('/reports', hasPermission('view_reports'), async (req, res) => {
   try {
     const year = req.query.year || new Date().getFullYear().toString();
     const monthly = [];

@@ -1,11 +1,11 @@
 ﻿const express = require('express');
 const db = require('../database');
-const { adminMiddleware } = require('../middleware/authMiddleware');
+const { hasPermission } = require('../middleware/authMiddleware');
 const { testConnection } = require('../services/aiService');
 
 const router = express.Router();
 
-router.get('/', adminMiddleware, async (req, res) => {
+router.get('/', hasPermission('manage_settings'), async (req, res) => {
   try {
     const rows = await db.prepare('SELECT key, value FROM settings').all();
     const result = {};
@@ -14,7 +14,7 @@ router.get('/', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في استرجاع الإعدادات' }); }
 });
 
-router.put('/', adminMiddleware, async (req, res) => {
+router.put('/', hasPermission('manage_settings'), async (req, res) => {
   try {
     const updates = req.body;
     for (const [key, value] of Object.entries(updates)) {
@@ -29,7 +29,7 @@ router.put('/', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/ai-models', adminMiddleware, (req, res) => {
+router.get('/ai-models', hasPermission('manage_settings'), (req, res) => {
   res.json({
     models: [
       { id: 'gpt-4o', name: 'GPT-4o — الأدق والأفضل (موصى به)', provider: 'openai' },
@@ -41,7 +41,7 @@ router.get('/ai-models', adminMiddleware, (req, res) => {
   });
 });
 
-router.post('/test-ai', adminMiddleware, async (req, res) => {
+router.post('/test-ai', hasPermission('manage_settings'), async (req, res) => {
   try {
     const keyRow = await db.prepare("SELECT value FROM settings WHERE key = 'ai_api_key'").get();
     const apiKey = keyRow?.value;
