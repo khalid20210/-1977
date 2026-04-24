@@ -39,6 +39,29 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (!token || !user?.id) return undefined;
+
+    let stopped = false;
+    const sendHeartbeat = async () => {
+      if (stopped) return;
+      try {
+        await fetch(API_BASE + '/api/auth/presence/heartbeat', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (_) {}
+    };
+
+    sendHeartbeat();
+    const timer = setInterval(sendHeartbeat, 30000);
+
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [token, user?.id]);
+
   const login = (tok, userData) => {
     localStorage.setItem('token', tok);
     setToken(tok);

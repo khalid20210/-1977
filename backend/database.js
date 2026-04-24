@@ -78,8 +78,13 @@ async function initDatabase() {
     partner_type TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
     phone TEXT,
+    last_seen_at TIMESTAMP,
+    last_presence_notification_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
   )`);
+
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_presence_notification_at TIMESTAMP`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS permissions (
     id SERIAL PRIMARY KEY,

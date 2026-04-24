@@ -720,6 +720,8 @@ export default function Users() {
 }
 
 function UserRow({ user, onStatus, onDelete, onEdit, onPermissions, isSelected, onToggleSelect, canManageUsers, canApproveUsers, canManageUserPermissions }) {
+  const isOnline = Boolean(user.is_online);
+
   return (
     <div className="flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50 transition-colors">
       <div className="flex items-center gap-3">
@@ -731,11 +733,15 @@ function UserRow({ user, onStatus, onDelete, onEdit, onPermissions, isSelected, 
             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
         )}
-        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+        <div className="relative w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
           <span className="text-blue-700 font-bold text-sm">{user.name?.[0] || '?'}</span>
+          {isOnline && <span className="absolute -bottom-0.5 -left-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-green-500" title="متصل الآن" />}
         </div>
         <div>
-          <div className="font-semibold text-gray-900 text-sm">{user.name}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-semibold text-gray-900 text-sm">{user.name}</div>
+            {isOnline && <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">متصل الآن</span>}
+          </div>
           <div className="text-gray-400 text-xs">{user.email}</div>
           {user.phone && <div className="text-gray-400 text-xs">{user.phone}</div>}
         </div>
