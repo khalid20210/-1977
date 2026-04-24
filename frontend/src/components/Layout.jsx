@@ -139,7 +139,7 @@ export default function Layout({ children }) {
       } catch (_) {}
     };
     loadNotifs();
-    const t = setInterval(loadNotifs, 5000);
+    const t = setInterval(loadNotifs, 15000);
     return () => { mounted = false; clearInterval(t); };
   }, [location.pathname]);
 
@@ -193,8 +193,6 @@ export default function Layout({ children }) {
 
   const notifTypeMeta = (type) => {
     switch(type) {
-      case 'presence':
-        return { Icon: UserCheck, iconClass: 'text-emerald-600', bgClass: 'bg-emerald-100' };
       case 'message':
         return { Icon: MessageCircleMore, iconClass: 'text-sky-600', bgClass: 'bg-sky-100' };
       case 'update':

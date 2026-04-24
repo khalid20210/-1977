@@ -5,7 +5,6 @@ const { createNotification, notifyAdmins } = require('../services/notificationSe
 const { ensureRequestDocuments } = require('../services/requestDocuments');
 
 const router = express.Router();
-const ONLINE_WINDOW_SECONDS = 90;
 
 const usersAccessMiddleware = hasAnyPermission(['manage_users', 'approve_users', 'manage_user_permissions']);
 
@@ -54,12 +53,7 @@ router.post('/users', hasPermission('manage_users'), async (req, res) => {
 router.get('/users', usersAccessMiddleware, async (req, res) => {
   try {
     const users = await db.prepare(
-      `SELECT u.id, u.name, u.email, u.role, u.partner_type, u.status, u.phone, u.created_at,
-              u.last_seen_at,
-              CASE
-                WHEN u.last_seen_at IS NOT NULL AND u.last_seen_at >= NOW() - INTERVAL '${ONLINE_WINDOW_SECONDS} seconds'
-                THEN 1 ELSE 0
-              END as is_online
+      `SELECT u.id, u.name, u.email, u.role, u.partner_type, u.status, u.phone, u.created_at
        FROM users u
        ORDER BY u.created_at DESC`
     ).all();

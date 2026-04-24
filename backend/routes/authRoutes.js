@@ -8,7 +8,6 @@ const { notifyAdmins } = require('../services/notificationService');
 const { ensureEmailConfig, sendPasswordResetCodeEmail } = require('../services/emailService');
 
 const router = express.Router();
-const ONLINE_WINDOW_SECONDS = 90;
 const jwtSecret = process.env.JWT_SECRET;
 const PASSWORD_RESET_CODE_TTL_MINUTES = 10;
 const PASSWORD_RESET_MAX_ATTEMPTS = 5;
@@ -102,54 +101,6 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'خطأ في الخادم' });
-  }
-});
-
-router.post('/presence/heartbeat', authMiddleware, async (req, res) => {
-  try {
-    const result = await db.query(
-      `WITH current_user AS (
-         SELECT id, name, role, status, last_seen_at
-         FROM users
-         WHERE id = $1
-         FOR UPDATE
-       ), updated AS (
-         UPDATE users u
-         SET last_seen_at = NOW(),
-             last_presence_notification_at = CASE
-               WHEN c.role = 'employee'
-                 AND c.status = 'approved'
-                 AND (c.last_seen_at IS NULL OR c.last_seen_at < NOW() - INTERVAL '${ONLINE_WINDOW_SECONDS} seconds')
-               THEN NOW()
-               ELSE u.last_presence_notification_at
-             END
-         FROM current_user c
-         WHERE u.id = c.id
-         RETURNING c.name, c.role, c.status, c.last_seen_at
-       )
-       SELECT name, role, status,
-              CASE
-                WHEN last_seen_at IS NULL OR last_seen_at < NOW() - INTERVAL '${ONLINE_WINDOW_SECONDS} seconds'
-                THEN TRUE ELSE FALSE
-              END AS became_online
-       FROM updated`,
-      [req.user.id]
-    );
-
-    const presenceRow = result.rows[0];
-    if (presenceRow?.became_online && presenceRow.role === 'employee' && presenceRow.status === 'approved') {
-      await notifyAdmins({
-        type: 'presence',
-        title: 'دخول موظف للمنصة',
-        body: `${presenceRow.name} متصل الآن بالمنصة`,
-        link: '/users',
-      });
-    }
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Presence heartbeat error:', err);
-    res.status(500).json({ error: 'تعذر تحديث حالة الاتصال' });
   }
 });
 
