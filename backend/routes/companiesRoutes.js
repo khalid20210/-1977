@@ -88,7 +88,6 @@ router.delete('/companies/:id', adminMiddleware, async (req, res) => {
   try {
     const company = await db.prepare('SELECT id, user_id FROM companies WHERE id = ?').get(req.params.id);
     if (!company) return res.status(404).json({ error: 'المنشأة غير موجودة' });
-    if (company.user_id) return res.status(403).json({ error: 'لا يمكن حذف هذه المنشأة لأنها مضافة من قِبل موظف' });
     await db.prepare('DELETE FROM companies WHERE id = ?').run(req.params.id);
     res.json({ message: 'تم الحذف' });
   } catch (err) { res.status(500).json({ error: 'خطأ في الحذف' }); }
@@ -176,11 +175,11 @@ router.post('/establishments', authMiddleware, async (req, res) => {
 
 router.delete('/establishments/:id', authMiddleware, async (req, res) => {
   try {
-    const company = await db.prepare('SELECT id, user_id FROM companies WHERE id = ?').get(req.params.id);
-    if (!company) return res.status(404).json({ error: 'المنشأة غير موجودة' });
-    if (req.user.role !== 'admin' && company.user_id !== req.user.id) {
-      return res.status(403).json({ error: 'لا يمكنك حذف هذه المنشأة' });
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'حذف المنشآت متاح للمدير فقط' });
     }
+    const company = await db.prepare('SELECT id FROM companies WHERE id = ?').get(req.params.id);
+    if (!company) return res.status(404).json({ error: 'المنشأة غير موجودة' });
     await db.prepare('DELETE FROM companies WHERE id = ?').run(req.params.id);
     res.json({ message: 'تم الحذف' });
   } catch (err) { res.status(500).json({ error: 'خطأ في الحذف' }); }
