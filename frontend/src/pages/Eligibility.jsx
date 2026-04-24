@@ -78,7 +78,7 @@ function StatCard({ icon: Icon, label, value, sub, tone = 'blue' }) {
 }
 
 export default function Eligibility() {
-  const { authFetch, isAdmin } = useAuth();
+  const { authFetch, isAdmin, user } = useAuth();
 
   const [form, setForm] = useState({
     fundingType:    'نقاط بيع',
@@ -228,6 +228,7 @@ export default function Eligibility() {
   const eligible = isTaxFunding ? declarationEligible : (isPersonalFunding ? personalEligible : (isPropertyFunding ? propertyEligible : cashEligibleAlternative));
   const showApproximateFunding = eligible && isRevenueBasedFunding && Number(result?.approximateFundingMax) >= 0;
   const hasDebtAdjustment = Number(result?.debtAmount) > 0;
+  const canViewBankNames = isAdmin || user?.role === 'employee';
   const statusTitle = isTaxFunding
     ? (declarationEligible ? 'أنت مؤهل لتمويل الإقرارات' : 'أنت غير مؤهل لتمويل الإقرارات حالياً')
     : isPersonalFunding
@@ -603,7 +604,7 @@ export default function Eligibility() {
                 </div>
               )}
 
-              {!!result?.matchedRules?.length && !isTaxFunding && (
+              {!!result?.matchedRules?.length && !isTaxFunding && canViewBankNames && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-bold text-gray-800 mb-3">السيناريو المطابق</h3>
                   <div className="flex flex-wrap gap-2">
