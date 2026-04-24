@@ -17,17 +17,18 @@ const navItems = [
   { path: '/eligibility',     label: 'أهلية المنشأة',  icon: ClipboardCheck,  roles: ['admin', 'employee', 'partner'] },
   { path: '/establishments',  label: 'المنشآت',        icon: Store,           roles: ['admin'] },
   { path: '/brokers',         label: 'الوسطاء',        icon: UserCheck,       roles: ['admin', 'employee'] },
-  { path: '/companies',       label: 'جهات التمويل', icon: Building2,       roles: ['admin'] },
-  { path: '/users',           label: 'المستخدمون',   icon: Users,           roles: ['admin'] },
-  { path: '/settings',        label: 'الإعدادات',      icon: Settings,        roles: ['admin'] },
+  { path: '/companies',       label: 'جهات التمويل', icon: Building2,       roles: ['admin'], permission: 'manage_funding' },
+  { path: '/users',           label: 'المستخدمون',   icon: Users,           roles: ['admin'], anyPermissions: ['manage_users', 'approve_users', 'manage_user_permissions'] },
+  { path: '/settings',        label: 'الإعدادات',      icon: Settings,        roles: ['admin'], permission: 'manage_settings' },
 ];
 
 export default function Layout({ children }) {
-  const { user, logout, authFetch } = useAuth();
+  const { user, logout, authFetch, hasPermission, hasAnyPermission } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const canCreateRequest = ['admin', 'employee', 'partner'].includes(user?.role);
+  const canCreateRequest = ['admin', 'employee', 'partner'].includes(user?.role) || hasPermission('create_requests');
+  const canApproveUsers = hasPermission('approve_users');
   const [missingCount, setMissingCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [pendingUsers, setPendingUsers] = useState(0);
@@ -88,7 +89,7 @@ export default function Layout({ children }) {
 
   // Badge: مستخدمون بانتظار الموافقة (للأدمن فقط)
   useEffect(() => {
-    if (user?.role !== 'admin') return;
+    if (!canApproveUsers) return;
     let mounted = true;
     const loadPending = async () => {
       try {
@@ -111,7 +112,7 @@ export default function Layout({ children }) {
     loadPending();
     const t = setInterval(loadPending, 15000);
     return () => { mounted = false; clearInterval(t); };
-  }, [user?.role, location.pathname]);
+  }, [canApproveUsers, location.pathname]);
 
   // Notifications polling
   React.useEffect(() => {
@@ -205,7 +206,12 @@ export default function Layout({ children }) {
     }
   };
 
-  const allowed = navItems.filter(n => n.roles.includes(user?.role));
+  const allowed = navItems.filter((item) => {
+    if (item.roles?.includes(user?.role)) return true;
+    if (item.permission && hasPermission(item.permission)) return true;
+    if (item.anyPermissions?.length && hasAnyPermission(item.anyPermissions)) return true;
+    return false;
+  });
 
   const NotificationDropdown = ({ buttonClassName, iconSize, badgeClassName, panelClassName, arrowClassName = '' }) => (
     <div ref={notifRef} className="relative">

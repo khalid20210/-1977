@@ -748,10 +748,15 @@ function MobileUploadAccordion({ title, countLabel, children }) {
 }
 
 export default function Requests() {
-  const { authFetch, user, isAdmin } = useAuth();
+  const { authFetch, user, isAdmin, hasPermission } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_URL || '';
+  const canCreateRequests = ['admin', 'employee', 'partner'].includes(user?.role) || hasPermission('create_requests');
+  const canDeleteRequests = hasPermission('delete_requests');
+  const canViewAllRequests = hasPermission('view_all_requests');
+  const canUpdateRequestStatus = hasPermission('update_request_status');
+  const canSendToFunding = hasPermission('send_to_funding');
 
   const getFileUrl = (filePath) => {
     if (!filePath) return null;
@@ -973,6 +978,7 @@ export default function Requests() {
   };
 
   const deleteRequest = async (r) => {
+    if (!canDeleteRequests) return;
     if (!confirm(`حذف طلب “${r.company_name}” نهائياً؟`)) return;
     const res = await authFetch(`/api/requests/${r.id}`, { method: 'DELETE' });
     if (res.ok) load(); else { const d = await res.json(); alert(d.error || 'خطأ في الحذف'); }
@@ -984,7 +990,7 @@ export default function Requests() {
 
   const load = async () => {
     setLoading(true);
-    const url = isAdmin ? '/api/admin/requests' : '/api/requests';
+    const url = canViewAllRequests ? '/api/admin/requests' : '/api/requests';
     const res = await authFetch(url);
     const data = res.ok ? await res.json() : [];
     setRequests(Array.isArray(data) ? data : []);
@@ -995,6 +1001,10 @@ export default function Requests() {
   useEffect(() => { load(); }, []);
 
   const openNew = async () => {
+    if (!canCreateRequests) {
+      alert('ليس لديك صلاحية إنشاء الطلبات');
+      return;
+    }
     const res = await authFetch('/api/requests/partners-list');
     const data = res.ok ? await res.json() : [];
     setPartners(Array.isArray(data) ? data : []);
@@ -1025,6 +1035,10 @@ export default function Requests() {
 
   const createRequest = async (e) => {
     e.preventDefault();
+    if (!canCreateRequests) {
+      alert('ليس لديك صلاحية إنشاء الطلبات');
+      return;
+    }
     setSubmittingNew(true);
     const payload = deriveRequestPayload(newForm);
     const res = await authFetch('/api/requests', { method: 'POST', body: JSON.stringify(payload) });
@@ -1067,7 +1081,7 @@ export default function Requests() {
   const openReview = async (req) => {
     setReviewReq(req); setLoadingReview(true); setReviewData(null);
     setSuggestedEntities([]);
-    const url = isAdmin ? `/api/admin/requests/${req.id}` : `/api/requests/${req.id}`;
+    const url = canViewAllRequests ? `/api/admin/requests/${req.id}` : `/api/requests/${req.id}`;
     const res = await authFetch(url);
     const data = res.ok ? await res.json() : null;
     setReviewData(data);
@@ -1075,7 +1089,7 @@ export default function Requests() {
     // تحديد الرسائل كمقروءة
     authFetch(`/api/requests/${req.id}/mark-read`, { method: 'POST' }).catch(() => {});
     // للأدمن فقط: جلب الجهات المقترحة عند حالة ملف مقدم
-    if (isAdmin && data && ['file_submitted', 'missing_submitted'].includes(data.status) && data.total_pos > 0) {
+    if (canViewAllRequests && data && ['file_submitted', 'missing_submitted'].includes(data.status) && data.total_pos > 0) {
       try {
         const er = await authFetch('/api/requests/eligibility-check', {
           method: 'POST',
@@ -1102,7 +1116,7 @@ export default function Requests() {
   };
 
   const reloadReview = async (requestId) => {
-    const url = isAdmin ? `/api/admin/requests/${requestId}` : `/api/requests/${requestId}`;
+    const url = canViewAllRequests ? `/api/admin/requests/${requestId}` : `/api/requests/${requestId}`;
     const res = await authFetch(url);
     setReviewData(res.ok ? await res.json() : null);
   };
@@ -1178,6 +1192,7 @@ export default function Requests() {
   };
 
   const openSend = async (req) => {
+    if (!canSendToFunding) return;
     setSendReq(req);
     setSendForm({ funding_entity_id: '', contact_id: '', note: '' });
     const [eRes, cRes] = await Promise.all([authFetch('/api/admin/funding-entities'), authFetch('/api/companies/contacts')]);
@@ -1196,6 +1211,7 @@ export default function Requests() {
   };
 
   const changeStatus = async (id, status) => {
+    if (!canUpdateRequestStatus) return;
     await authFetch(`/api/admin/requests/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
     setStatusDropdown(null);
     load();
@@ -1210,17 +1226,19 @@ export default function Requests() {
     return matchSearch && matchStatus;
   });
   const visibleRequestIds = isAdmin ? filtered.map(request => request.id) : [];
-  const allVisibleRequestsSelected = visibleRequestIds.length > 0 && visibleRequestIds.every(id => selectedRequestIds.includes(id));
+  const effectiveVisibleRequestIds = canDeleteRequests ? filtered.map(request => request.id) : [];
+  const allVisibleRequestsSelected = effectiveVisibleRequestIds.length > 0 && effectiveVisibleRequestIds.every(id => selectedRequestIds.includes(id));
 
   const toggleSelectAllRequests = () => {
     if (allVisibleRequestsSelected) {
-      setSelectedRequestIds(prev => prev.filter(id => !visibleRequestIds.includes(id)));
+      setSelectedRequestIds(prev => prev.filter(id => !effectiveVisibleRequestIds.includes(id)));
       return;
     }
-    setSelectedRequestIds(prev => Array.from(new Set([...prev, ...visibleRequestIds])));
+    setSelectedRequestIds(prev => Array.from(new Set([...prev, ...effectiveVisibleRequestIds])));
   };
 
   const bulkDeleteRequests = async () => {
+    if (!canDeleteRequests) return;
     if (selectedRequestIds.length === 0) return;
     if (!confirm(`حذف ${selectedRequestIds.length} طلب؟`)) return;
     const res = await authFetch('/api/requests/bulk-delete', {
@@ -1275,7 +1293,7 @@ export default function Requests() {
         </select>
       </div>
 
-      {isAdmin && visibleRequestIds.length > 0 && (
+      {canDeleteRequests && effectiveVisibleRequestIds.length > 0 && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
           <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer select-none">
             <input
@@ -1327,7 +1345,7 @@ export default function Requests() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  {isAdmin && <th className="px-4 py-3.5"></th>}
+                  {canDeleteRequests && <th className="px-4 py-3.5"></th>}
                   <th className="text-right px-5 py-3.5 font-semibold text-gray-500 text-xs hidden sm:table-cell">#</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">المنشأة</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs hidden md:table-cell">جوال المالك</th>
@@ -1346,7 +1364,7 @@ export default function Requests() {
                     : (USER_STATUS_MAP[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-600' });
                   return (
                     <tr key={r.id} className="hover:bg-blue-50/30 transition-colors group">
-                      {isAdmin && (
+                      {canDeleteRequests && (
                         <td className="px-4 py-4">
                           <input
                             type="checkbox"
@@ -1386,7 +1404,7 @@ export default function Requests() {
                       )}
                       <td className="px-4 py-4 text-gray-500 text-xs hidden lg:table-cell">{r.funding_entity_name || <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-4">
-                        {isAdmin ? (
+                        {canUpdateRequestStatus ? (
                           <div className="relative">
                             <button onClick={(e) => openStatusDropdown(r.id, e)} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer hover:opacity-80 ${st.color}`}>
                               {st.label}<ChevronDown size={11} />
@@ -1407,7 +1425,7 @@ export default function Requests() {
                               <Edit2 size={13} /> تحديث
                             </button>
                           )}
-                          {isAdmin ? (
+                          {canSendToFunding ? (
                             <button onClick={() => openSend(r)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100">
                               <Send size={13} /> إرسال
                             </button>
@@ -1425,7 +1443,7 @@ export default function Requests() {
                               <AlertTriangle size={13} /> إكمال النواقص
                             </button>
                           )}
-                          {isAdmin && (
+                          {canDeleteRequests && (
                             <button onClick={() => deleteRequest(r)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-100">
                               <Trash2 size={13} />
                             </button>

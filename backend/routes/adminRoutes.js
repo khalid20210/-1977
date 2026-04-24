@@ -1,10 +1,12 @@
 ﻿const express = require('express');
 const db = require('../database');
-const { adminMiddleware } = require('../middleware/authMiddleware');
+const { adminMiddleware, hasPermission, hasAnyPermission } = require('../middleware/authMiddleware');
 const { createNotification, notifyAdmins } = require('../services/notificationService');
 const { ensureRequestDocuments } = require('../services/requestDocuments');
 
 const router = express.Router();
+
+const usersAccessMiddleware = hasAnyPermission(['manage_users', 'approve_users', 'manage_user_permissions']);
 
 function parseObjectField(value) {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
@@ -27,13 +29,14 @@ function parseRequestRow(request = null) {
 }
 
 // ===== USERS =====
-router.post('/users', adminMiddleware, async (req, res) => {
+router.post('/users', hasPermission('manage_users'), async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
     const { name, email, role, phone, partner_type, password } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'الاسم مطلوب' });
     if (!email || !email.trim()) return res.status(400).json({ error: 'البريد مطلوب' });
     if (!password || password.length < 6) return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
+    if (role === 'admin' && req.user.role !== 'admin') return res.status(403).json({ error: 'إنشاء مدير جديد متاح للمدير فقط' });
     const dup = await db.prepare('SELECT id FROM users WHERE email = ?').get(email.trim().toLowerCase());
     if (dup) return res.status(400).json({ error: 'البريد الإلكتروني مستخدم مسبقاً' });
     const hashed = await bcrypt.hash(password, 10);
@@ -47,7 +50,7 @@ router.post('/users', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/users', adminMiddleware, async (req, res) => {
+router.get('/users', usersAccessMiddleware, async (req, res) => {
   try {
     const users = await db.prepare(
       'SELECT id, name, email, role, partner_type, status, phone, created_at FROM users ORDER BY created_at DESC'
@@ -59,7 +62,7 @@ router.get('/users', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/users/pending-count', adminMiddleware, async (req, res) => {
+router.get('/users/pending-count', hasPermission('approve_users'), async (req, res) => {
   try {
     const row = await db.prepare("SELECT COUNT(*) as count FROM users WHERE status = 'pending'").get();
     res.json({ count: row.count });
@@ -68,7 +71,7 @@ router.get('/users/pending-count', adminMiddleware, async (req, res) => {
   }
 });
 
-router.put('/users/:id', adminMiddleware, async (req, res) => {
+router.put('/users/:id', hasPermission('manage_users'), async (req, res) => {
   try {
     const user = await db.prepare('SELECT role FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
@@ -76,6 +79,7 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
     if (!name || !name.trim()) return res.status(400).json({ error: 'الاسم مطلوب' });
     if (!email || !email.trim()) return res.status(400).json({ error: 'البريد مطلوب' });
     if (user.role === 'admin' && role && role !== 'admin') return res.status(403).json({ error: 'لا يمكن تغيير دور الأدمن' });
+    if (role === 'admin' && req.user.role !== 'admin') return res.status(403).json({ error: 'تعيين دور المدير متاح للمدير فقط' });
     const dup = await db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email.trim().toLowerCase(), req.params.id);
     if (dup) return res.status(400).json({ error: 'البريد الإلكتروني مستخدم مسبقاً' });
     await db.prepare('UPDATE users SET name = ?, email = ?, role = ?, phone = ?, partner_type = ? WHERE id = ?')
@@ -87,7 +91,7 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
   }
 });
 
-router.put('/users/:id/status', adminMiddleware, async (req, res) => {
+router.put('/users/:id/status', hasPermission('approve_users'), async (req, res) => {
   try {
     const { status } = req.body;
     if (!['approved', 'blocked', 'pending'].includes(status)) return res.status(400).json({ error: 'حالة غير صحيحة' });
@@ -125,7 +129,7 @@ router.put('/users/:id/status', adminMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/users/:id', adminMiddleware, async (req, res) => {
+router.delete('/users/:id', hasPermission('manage_users'), async (req, res) => {
   try {
     const user = await db.prepare('SELECT role FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
@@ -138,7 +142,7 @@ router.delete('/users/:id', adminMiddleware, async (req, res) => {
   }
 });
 
-router.post('/users/bulk-delete', adminMiddleware, async (req, res) => {
+router.post('/users/bulk-delete', hasPermission('manage_users'), async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
     if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد مستخدمين للحذف' });
@@ -159,7 +163,7 @@ router.post('/users/bulk-delete', adminMiddleware, async (req, res) => {
   }
 });
 
-router.put('/users/:id/password', adminMiddleware, async (req, res) => {
+router.put('/users/:id/password', hasPermission('manage_users'), async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
     const { password } = req.body;
@@ -176,7 +180,7 @@ router.put('/users/:id/password', adminMiddleware, async (req, res) => {
 });
 
 // ===== REQUESTS =====
-router.get('/requests', adminMiddleware, async (req, res) => {
+router.get('/requests', hasPermission('view_all_requests'), async (req, res) => {
   try {
     const requests = await db.prepare(`
       SELECT r.*, u.name as user_name, u.phone as user_phone,
@@ -193,7 +197,7 @@ router.get('/requests', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/requests/:id', adminMiddleware, async (req, res) => {
+router.get('/requests/:id', hasPermission('view_all_requests'), async (req, res) => {
   try {
     const request = await db.prepare(`
             SELECT r.*, u.name as user_name, u.phone as user_phone, u.email as user_email,
@@ -224,7 +228,7 @@ router.get('/requests/:id', adminMiddleware, async (req, res) => {
   }
 });
 
-router.put('/requests/:id/status', adminMiddleware, async (req, res) => {
+router.put('/requests/:id/status', hasPermission('update_request_status'), async (req, res) => {
   try {
     const { status, note, rejection_reason } = req.body;
     const validStatuses = ['draft','bank_uploaded','analyzing','analyzed','docs_pending','docs_ready',
@@ -276,7 +280,7 @@ router.put('/requests/:id/status', adminMiddleware, async (req, res) => {
   }
 });
 
-router.post('/requests/:id/send-missing', adminMiddleware, async (req, res) => {
+router.post('/requests/:id/send-missing', hasPermission('send_missing_docs'), async (req, res) => {
   try {
     const { missing_items, note } = req.body;
     if (!missing_items || !Array.isArray(missing_items) || missing_items.length === 0)
@@ -303,7 +307,7 @@ router.post('/requests/:id/send-missing', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/missing-requests', adminMiddleware, async (req, res) => {
+router.get('/missing-requests', hasPermission('send_missing_docs'), async (req, res) => {
   try {
     const missingByType = await db.prepare(`
       SELECT 'employees' as type, COUNT(DISTINCT r.user_id) as count, COUNT(r.id) as total_requests
@@ -320,7 +324,7 @@ router.get('/missing-requests', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/missing-recipients/:type', adminMiddleware, async (req, res) => {
+router.get('/missing-recipients/:type', hasPermission('send_missing_docs'), async (req, res) => {
   try {
     const { type } = req.params;
     let query;
@@ -343,7 +347,7 @@ router.get('/missing-recipients/:type', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/missing-requests/:userId', adminMiddleware, async (req, res) => {
+router.get('/missing-requests/:userId', hasPermission('send_missing_docs'), async (req, res) => {
   try {
     const requests = await db.prepare(`
       SELECT r.*, u.name as user_name, u.phone as user_phone, fe.name as funding_entity_name
@@ -362,7 +366,7 @@ router.get('/missing-requests/:userId', adminMiddleware, async (req, res) => {
   }
 });
 
-router.post('/send-missing-alert', adminMiddleware, async (req, res) => {
+router.post('/send-missing-alert', hasPermission('send_missing_docs'), async (req, res) => {
   try {
     const { recipient_id, request_id, missing_items, message, phone_number } = req.body;
     if (!recipient_id || !request_id || !missing_items || !phone_number)
@@ -394,7 +398,7 @@ router.post('/send-missing-alert', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/pending-missing-alerts', adminMiddleware, async (req, res) => {
+router.get('/pending-missing-alerts', hasPermission('send_missing_docs'), async (req, res) => {
   try {
     const pending = await db.prepare(`
       SELECT a.*, u.name as recipient_name, r.company_name, r.status as request_status,
@@ -412,7 +416,7 @@ router.get('/pending-missing-alerts', adminMiddleware, async (req, res) => {
   }
 });
 
-router.post('/missing-alerts/:alertId/complete', adminMiddleware, async (req, res) => {
+router.post('/missing-alerts/:alertId/complete', hasPermission('send_missing_docs'), async (req, res) => {
   try {
     const alert = await db.prepare('SELECT * FROM missing_items_alerts WHERE id = ?').get(req.params.alertId);
     if (!alert) return res.status(404).json({ error: 'التنبيه غير موجود' });
@@ -428,7 +432,7 @@ router.post('/missing-alerts/:alertId/complete', adminMiddleware, async (req, re
   }
 });
 
-router.post('/missing-alerts/:alertId/send-reminder', adminMiddleware, async (req, res) => {
+router.post('/missing-alerts/:alertId/send-reminder', hasPermission('send_missing_docs'), async (req, res) => {
   try {
     const alert = await db.prepare('SELECT * FROM missing_items_alerts WHERE id = ?').get(req.params.alertId);
     if (!alert) return res.status(404).json({ error: 'التنبيه غير موجود' });
@@ -443,7 +447,7 @@ router.post('/missing-alerts/:alertId/send-reminder', adminMiddleware, async (re
   }
 });
 
-router.post('/requests/:id/assign-funding', adminMiddleware, async (req, res) => {
+router.post('/requests/:id/assign-funding', hasPermission('send_to_funding'), async (req, res) => {
   try {
     const { funding_entity_id, contact_id, note } = req.body;
     if (!funding_entity_id) return res.status(400).json({ error: 'الجهة التمويلية مطلوبة' });
@@ -477,7 +481,7 @@ router.post('/requests/:id/assign-funding', adminMiddleware, async (req, res) =>
 });
 
 // ===== FUNDING ENTITIES =====
-router.get('/funding-entities', adminMiddleware, async (req, res) => {
+router.get('/funding-entities', hasAnyPermission(['manage_funding', 'send_to_funding']), async (req, res) => {
   try {
     const entities = await db.prepare('SELECT * FROM funding_entities ORDER BY priority DESC').all();
     res.json(entities.map(e => ({
@@ -492,7 +496,7 @@ router.get('/funding-entities', adminMiddleware, async (req, res) => {
   }
 });
 
-router.post('/funding-entities', adminMiddleware, async (req, res) => {
+router.post('/funding-entities', hasPermission('manage_funding'), async (req, res) => {
   try {
     const { name, priority, min_pos_amount, min_deposit_amount, min_transfer_amount, min_months,
       required_documents, notes, whatsapp_number, additional_whatsapp_numbers, product_types } = req.body;
@@ -511,7 +515,7 @@ router.post('/funding-entities', adminMiddleware, async (req, res) => {
   }
 });
 
-router.put('/funding-entities/:id', adminMiddleware, async (req, res) => {
+router.put('/funding-entities/:id', hasPermission('manage_funding'), async (req, res) => {
   try {
     const entity = await db.prepare('SELECT * FROM funding_entities WHERE id = ?').get(req.params.id);
     if (!entity) return res.status(404).json({ error: 'الجهة غير موجودة' });
@@ -535,7 +539,7 @@ router.put('/funding-entities/:id', adminMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/funding-entities/:id', adminMiddleware, async (req, res) => {
+router.delete('/funding-entities/:id', hasPermission('manage_funding'), async (req, res) => {
   try {
     await db.prepare('DELETE FROM funding_entities WHERE id = ?').run(req.params.id);
     res.json({ message: 'تم حذف الجهة التمويلية' });
@@ -545,7 +549,7 @@ router.delete('/funding-entities/:id', adminMiddleware, async (req, res) => {
   }
 });
 
-router.post('/funding-entities/bulk-delete', adminMiddleware, async (req, res) => {
+router.post('/funding-entities/bulk-delete', hasPermission('manage_funding'), async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
     if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد جهات تمويلية للحذف' });
@@ -675,7 +679,11 @@ router.post('/permissions/reset', adminMiddleware, async (req, res) => {
       { key: 'send_missing_docs',     label: 'إرسال نواقص للموظف',          description: 'يستطيع طلب مستندات ناقصة من الموظف',            category: 'الطلبات' },
       { key: 'send_to_funding',       label: 'إرسال الملف للجهة التمويلية', description: 'يظهر له زر الإرسال عبر واتساب للجهة التمويلية', category: 'الإرسال' },
       { key: 'send_to_employee',      label: 'التواصل مع الموظف بالواتساب', description: 'يستطيع الضغط على زر واتساب الموظف',            category: 'الإرسال' },
+      { key: 'create_requests',       label: 'إنشاء الطلبات',               description: 'يستطيع إنشاء طلب جديد من الواجهة',            category: 'الطلبات' },
+      { key: 'delete_requests',       label: 'حذف الطلبات',                 description: 'يستطيع حذف الطلبات نهائياً أو اعتماد حذفها',   category: 'الطلبات' },
       { key: 'approve_users',         label: 'الموافقة على المستخدمين',      description: 'يستطيع تفعيل أو حظر المستخدمين الجدد',         category: 'المستخدمون' },
+      { key: 'manage_users',          label: 'إدارة المستخدمين',            description: 'يستطيع إنشاء وتعديل وحذف المستخدمين غير الأدمن', category: 'المستخدمون' },
+      { key: 'manage_user_permissions', label: 'إدارة صلاحيات المستخدمين', description: 'يستطيع منح وسحب الصلاحيات للمستخدمين',        category: 'المستخدمون' },
       { key: 'manage_funding',        label: 'إدارة الجهات التمويلية',       description: 'يستطيع إضافة وتعديل وحذف الجهات التمويلية',    category: 'الجهات التمويلية' },
       { key: 'manage_settings',       label: 'الوصول للإعدادات',             description: 'يستطيع تعديل إعدادات المنصة والذكاء الاصطناعي', category: 'الإعدادات' },
     ];
@@ -691,7 +699,7 @@ router.post('/permissions/reset', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/permissions', adminMiddleware, async (req, res) => {
+router.get('/permissions', hasPermission('manage_user_permissions'), async (req, res) => {
   try {
     const permissions = await db.prepare('SELECT * FROM permissions ORDER BY category, label').all();
     res.json(permissions);
@@ -728,7 +736,7 @@ router.delete('/permissions/:key', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/users/:id/permissions', adminMiddleware, async (req, res) => {
+router.get('/users/:id/permissions', hasPermission('manage_user_permissions'), async (req, res) => {
   try {
     const user = await db.prepare('SELECT id, name, role FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
@@ -744,7 +752,7 @@ router.get('/users/:id/permissions', adminMiddleware, async (req, res) => {
   }
 });
 
-router.put('/users/:id/permissions', adminMiddleware, async (req, res) => {
+router.put('/users/:id/permissions', hasPermission('manage_user_permissions'), async (req, res) => {
   try {
     const { permissions } = req.body;
     if (!Array.isArray(permissions)) return res.status(400).json({ error: 'قائمة صلاحيات غير صالحة' });
@@ -762,7 +770,7 @@ router.put('/users/:id/permissions', adminMiddleware, async (req, res) => {
   }
 });
 
-router.get('/users/:id/permissions-summary', adminMiddleware, async (req, res) => {
+router.get('/users/:id/permissions-summary', hasPermission('manage_user_permissions'), async (req, res) => {
   try {
     const perms = await db.prepare(`
       SELECT p.key, p.label, p.category, up.granted_at
@@ -777,7 +785,7 @@ router.get('/users/:id/permissions-summary', adminMiddleware, async (req, res) =
 });
 
 // ===== DELETE REQUESTS =====
-router.get('/delete-requests', adminMiddleware, async (req, res) => {
+router.get('/delete-requests', hasPermission('delete_requests'), async (req, res) => {
   try {
     const requests = await db.prepare(`
       SELECT r.id, r.company_name, r.owner_name, r.owner_phone, r.entity_type, r.delete_reason, r.updated_at,
@@ -792,7 +800,7 @@ router.get('/delete-requests', adminMiddleware, async (req, res) => {
   }
 });
 
-router.post('/requests/:id/approve-delete', adminMiddleware, async (req, res) => {
+router.post('/requests/:id/approve-delete', hasPermission('delete_requests'), async (req, res) => {
   try {
     const request = await db.prepare("SELECT * FROM requests WHERE id=? AND status='delete_requested'").get(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود أو لم يُطلب حذفه' });
@@ -804,7 +812,7 @@ router.post('/requests/:id/approve-delete', adminMiddleware, async (req, res) =>
   }
 });
 
-router.post('/requests/:id/reject-delete', adminMiddleware, async (req, res) => {
+router.post('/requests/:id/reject-delete', hasPermission('delete_requests'), async (req, res) => {
   try {
     const request = await db.prepare('SELECT * FROM requests WHERE id=?').get(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });

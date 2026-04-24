@@ -10,6 +10,14 @@ const { ensureRequestDocuments } = require('../services/requestDocuments');
 
 const router = express.Router();
 
+function canCreateRequests(user = {}) {
+  return user.role === 'admin' || ['employee', 'partner'].includes(user.role) || (user.permissions || []).includes('create_requests');
+}
+
+function canDeleteRequests(user = {}) {
+  return user.role === 'admin' || (user.permissions || []).includes('delete_requests');
+}
+
 // File upload configs
 const makeStorage = (subDir) => multer.diskStorage({
   destination: (req, file, cb) => {
@@ -647,6 +655,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // POST /api/requests
 router.post('/', authMiddleware, async (req, res) => {
   try {
+    if (!canCreateRequests(req.user)) return res.status(403).json({ error: 'ليس لديك صلاحية إنشاء الطلبات' });
     const { funding_type, entity_type, ownership_type, owners_count, owner_phone, referred_by_id } = req.body;
     const productDetails = parseObjectField(req.body?.product_details);
     const requestName = resolveRequestPrimaryName(req.body, productDetails);
@@ -1238,7 +1247,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 // DELETE /api/requests/:id — admin hard delete
 router.post('/bulk-delete', authMiddleware, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') return res.status(403).json({ error: 'المدير فقط يمكنه الحذف' });
+    if (!canDeleteRequests(req.user)) return res.status(403).json({ error: 'ليس لديك صلاحية حذف الطلبات' });
     const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
     if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد طلبات للحذف' });
 
@@ -1263,7 +1272,7 @@ router.post('/bulk-delete', authMiddleware, async (req, res) => {
 
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') return res.status(403).json({ error: 'المدير فقط يمكنه الحذف' });
+    if (!canDeleteRequests(req.user)) return res.status(403).json({ error: 'ليس لديك صلاحية حذف الطلبات' });
     const request = await db.prepare('SELECT id FROM requests WHERE id = ?').get(req.params.id);
     if (!request) return res.status(404).json({ error: 'الطلب غير موجود' });
     await db.prepare('DELETE FROM status_history WHERE request_id = ?').run(req.params.id);

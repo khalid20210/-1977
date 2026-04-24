@@ -60,8 +60,8 @@ class RuntimeRecoveryBoundary extends React.Component {
   }
 }
 
-function PrivateRoute({ children, adminOnly = false }) {
-  const { user, loading, token } = useAuth();
+function PrivateRoute({ children, adminOnly = false, permission = null, anyPermissions = [] }) {
+  const { user, loading, token, hasPermission, hasAnyPermission } = useAuth();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -69,6 +69,8 @@ function PrivateRoute({ children, adminOnly = false }) {
   );
   if (!token) return <Navigate to="/login" replace />;
   if (adminOnly && user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (permission && !hasPermission(permission)) return <Navigate to="/dashboard" replace />;
+  if (anyPermissions.length > 0 && !hasAnyPermission(anyPermissions)) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -90,13 +92,13 @@ function AppRoutes() {
         <PrivateRoute><Layout><Brokers /></Layout></PrivateRoute>
       } />
       <Route path="/companies" element={
-        <PrivateRoute adminOnly><Layout><Companies /></Layout></PrivateRoute>
+        <PrivateRoute permission="manage_funding"><Layout><Companies /></Layout></PrivateRoute>
       } />
       <Route path="/users" element={
-        <PrivateRoute adminOnly><Layout><Users /></Layout></PrivateRoute>
+        <PrivateRoute anyPermissions={['manage_users', 'approve_users', 'manage_user_permissions']}><Layout><Users /></Layout></PrivateRoute>
       } />
       <Route path="/settings" element={
-        <PrivateRoute adminOnly><Layout><Settings /></Layout></PrivateRoute>
+        <PrivateRoute permission="manage_settings"><Layout><Settings /></Layout></PrivateRoute>
       } />
       <Route path="/attendance" element={
         <PrivateRoute><Layout><Attendance /></Layout></PrivateRoute>

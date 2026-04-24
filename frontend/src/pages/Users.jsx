@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { UserCheck, UserX, Trash2, Search, Edit2, X, Plus, Bell, Send } from 'lucide-react';
+import { UserCheck, UserX, Trash2, Search, Edit2, X, Plus, Bell, Send, Shield } from 'lucide-react';
 
 const roleLabel = { admin: 'مدير', employee: 'موظف', partner: 'شريك' };
 const roleColor = { admin: 'bg-purple-100 text-purple-700', employee: 'bg-blue-100 text-blue-700', partner: 'bg-green-100 text-green-700' };
@@ -8,7 +8,10 @@ const statusColor = { approved: 'bg-green-100 text-green-700', pending: 'bg-yell
 const statusLabel = { approved: 'نشط', pending: 'بانتظار الموافقة', blocked: 'محظور' };
 
 export default function Users() {
-  const { authFetch } = useAuth();
+  const { authFetch, isAdmin, user, hasPermission, refreshUser } = useAuth();
+  const canManageUsers = hasPermission('manage_users');
+  const canApproveUsers = hasPermission('approve_users');
+  const canManageUserPermissions = hasPermission('manage_user_permissions');
   const [users, setUsers] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +31,13 @@ export default function Users() {
   const [notifForm, setNotifForm] = useState({ title: '', body: '', type: 'general' });
   const [sendingNotif, setSendingNotif] = useState(false);
 
+  const [permissionUser, setPermissionUser] = useState(null);
+  const [permissionOptions, setPermissionOptions] = useState([]);
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [savingPermissions, setSavingPermissions] = useState(false);
+  const [permissionsAreAutoManaged, setPermissionsAreAutoManaged] = useState(false);
+
   const load = async () => {
     setLoading(true);
     const res = await authFetch('/api/admin/users');
@@ -40,12 +50,14 @@ export default function Users() {
   useEffect(() => { load(); }, []);
 
   const setStatus = async (id, status) => {
+    if (!canApproveUsers) return;
     const res = await authFetch(`/api/admin/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
     if (res.ok) load();
     else alert('خطأ في التحديث');
   };
 
   const deleteUser = async (id, name) => {
+    if (!canManageUsers) return;
     if (!confirm(`هل أنت متأكد من حذف "${name}"؟`)) return;
     const res = await authFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
     if (res.ok) load();
@@ -62,6 +74,7 @@ export default function Users() {
   const clearSelection = () => setSelectedIds([]);
 
   const openEdit = (user) => {
+    if (!canManageUsers) return;
     setEditUser(user);
     setEditForm({
       name: user.name || '',
@@ -74,6 +87,7 @@ export default function Users() {
 
   const submitEdit = async (e) => {
     e.preventDefault();
+    if (!canManageUsers) return;
     setSubmittingEdit(true);
     const res = await authFetch(`/api/admin/users/${editUser.id}`, { method: 'PUT', body: JSON.stringify(editForm) });
     const data = await res.json();
@@ -87,6 +101,7 @@ export default function Users() {
 
   const submitAdd = async (e) => {
     e.preventDefault();
+    if (!canManageUsers) return;
     setSubmittingAdd(true);
     const res = await authFetch('/api/admin/users', { method: 'POST', body: JSON.stringify(addForm) });
     const data = await res.json();
@@ -129,7 +144,57 @@ export default function Users() {
     user.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const visibleSelectableIds = filtered.filter(user => user.role !== 'admin').map(user => user.id);
+  const openPermissions = async (targetUser) => {
+    if (!canManageUserPermissions) return;
+    setLoadingPermissions(true);
+    setPermissionUser(targetUser);
+    const res = await authFetch(`/api/admin/users/${targetUser.id}/permissions`);
+    const data = res.ok ? await res.json() : null;
+    if (!data) {
+      alert('تعذر تحميل صلاحيات المستخدم');
+      setPermissionUser(null);
+      setLoadingPermissions(false);
+      return;
+    }
+    setPermissionOptions(Array.isArray(data.all_permissions) ? data.all_permissions : []);
+    setSelectedPermissions(Array.isArray(data.user_permissions) ? data.user_permissions : []);
+    setPermissionsAreAutoManaged(Boolean(data.is_admin));
+    setLoadingPermissions(false);
+  };
+
+  const togglePermission = (permissionKey) => {
+    setSelectedPermissions((current) => current.includes(permissionKey)
+      ? current.filter((key) => key !== permissionKey)
+      : [...current, permissionKey]);
+  };
+
+  const savePermissions = async () => {
+    if (!permissionUser || permissionsAreAutoManaged) {
+      setPermissionUser(null);
+      return;
+    }
+
+    setSavingPermissions(true);
+    const res = await authFetch(`/api/admin/users/${permissionUser.id}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions: selectedPermissions }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'تعذر حفظ الصلاحيات');
+      setSavingPermissions(false);
+      return;
+    }
+
+    if (Number(permissionUser.id) === Number(user?.id)) {
+      await refreshUser();
+    }
+
+    setSavingPermissions(false);
+    setPermissionUser(null);
+  };
+
+  const visibleSelectableIds = canManageUsers ? filtered.filter(user => user.role !== 'admin').map(user => user.id) : [];
   const allVisibleSelected = visibleSelectableIds.length > 0 && visibleSelectableIds.every(id => selectedIds.includes(id));
 
   const toggleSelectAllVisible = () => {
@@ -141,6 +206,7 @@ export default function Users() {
   };
 
   const bulkDeleteUsers = async () => {
+    if (!canManageUsers) return;
     if (selectedIds.length === 0) return;
     if (!confirm(`هل أنت متأكد من حذف ${selectedIds.length} مستخدم؟`)) return;
 
@@ -168,20 +234,24 @@ export default function Users() {
           <p className="text-gray-500 text-sm mt-1">{users.length} مستخدم إجمالاً</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowNotifModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
-          >
-            <Bell size={16} /> إرسال تنبيه
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm hover:opacity-90"
-            style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}
-          >
-            <Plus size={16} /> إضافة مستخدم
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowNotifModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+            >
+              <Bell size={16} /> إرسال تنبيه
+            </button>
+          )}
+          {canManageUsers && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm hover:opacity-90"
+              style={{ background: 'linear-gradient(90deg, #1e3a8a, #2563eb)' }}
+            >
+              <Plus size={16} /> إضافة مستخدم
+            </button>
+          )}
         </div>
       </div>
 
@@ -195,7 +265,7 @@ export default function Users() {
         />
       </div>
 
-      {visibleSelectableIds.length > 0 && (
+      {canManageUsers && visibleSelectableIds.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer select-none">
@@ -239,8 +309,12 @@ export default function Users() {
                     onStatus={setStatus}
                     onDelete={deleteUser}
                     onEdit={openEdit}
+                    onPermissions={openPermissions}
                     isSelected={selectedIds.includes(user.id)}
                     onToggleSelect={toggleSelection}
+                    canManageUsers={canManageUsers}
+                    canApproveUsers={canApproveUsers}
+                    canManageUserPermissions={canManageUserPermissions}
                   />
                 ))}
               </div>
@@ -259,8 +333,12 @@ export default function Users() {
                     onStatus={setStatus}
                     onDelete={deleteUser}
                     onEdit={openEdit}
+                    onPermissions={openPermissions}
                     isSelected={selectedIds.includes(user.id)}
                     onToggleSelect={toggleSelection}
+                    canManageUsers={canManageUsers}
+                    canApproveUsers={canApproveUsers}
+                    canManageUserPermissions={canManageUserPermissions}
                   />
                 ))}
               </div>
@@ -307,7 +385,7 @@ export default function Users() {
                   >
                     <option value="employee">موظف</option>
                     <option value="partner">شريك</option>
-                    <option value="admin">مدير</option>
+                    {isAdmin && <option value="admin">مدير</option>}
                   </select>
                 </div>
                 <div>
@@ -404,7 +482,7 @@ export default function Users() {
                   >
                     <option value="employee">موظف</option>
                     <option value="partner">شريك</option>
-                    <option value="admin">مدير</option>
+                    {isAdmin && <option value="admin">مدير</option>}
                   </select>
                 </div>
                 <div>
@@ -558,15 +636,94 @@ export default function Users() {
           </div>
         </div>
       )}
+
+      {permissionUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                  <Shield size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-gray-900">إدارة الصلاحيات</h2>
+                  <p className="text-xs text-gray-500">{permissionUser.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setPermissionUser(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <div className="font-bold text-slate-900">صلاحيات الدور الأساسية</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {permissionsAreAutoManaged
+                    ? 'هذا المستخدم مدير، لذلك يملك جميع الصلاحيات تلقائياً ولا يمكن تعديلها من هنا.'
+                    : 'لا توجد صلاحيات تلقائية مرتبطة بالدور حالياً، وجميع الصلاحيات أدناه تُمنح يدويًا.'}
+                </div>
+              </div>
+
+              {loadingPermissions ? (
+                <div className="flex justify-center py-10">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                </div>
+              ) : (
+                <div className="max-h-[26rem] space-y-3 overflow-y-auto pr-1">
+                  {permissionOptions.map((permission) => {
+                    const checked = selectedPermissions.includes(permission.key);
+                    return (
+                      <label key={permission.key} className={`flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${checked ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={permissionsAreAutoManaged}
+                          onChange={() => togglePermission(permission.key)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-bold text-gray-900">{permission.label}</span>
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{permission.category || 'عام'}</span>
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">{permission.description || permission.key}</div>
+                          <div className="mt-1 font-mono text-[11px] text-gray-400">{permission.key}</div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 border-t border-gray-100 px-6 py-4">
+              <button
+                type="button"
+                onClick={savePermissions}
+                disabled={loadingPermissions || savingPermissions}
+                className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {permissionsAreAutoManaged ? 'إغلاق' : savingPermissions ? 'جارٍ الحفظ...' : 'حفظ الصلاحيات'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPermissionUser(null)}
+                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function UserRow({ user, onStatus, onDelete, onEdit, isSelected, onToggleSelect }) {
+function UserRow({ user, onStatus, onDelete, onEdit, onPermissions, isSelected, onToggleSelect, canManageUsers, canApproveUsers, canManageUserPermissions }) {
   return (
     <div className="flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50 transition-colors">
       <div className="flex items-center gap-3">
-        {user.role !== 'admin' && (
+        {canManageUsers && user.role !== 'admin' && (
           <input
             type="checkbox"
             checked={isSelected}
@@ -590,7 +747,7 @@ function UserRow({ user, onStatus, onDelete, onEdit, isSelected, onToggleSelect 
         <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${statusColor[user.status] || 'bg-gray-100 text-gray-600'}`}>
           {statusLabel[user.status] || user.status}
         </span>
-        {user.status === 'pending' && (
+        {canApproveUsers && user.status === 'pending' && (
           <button
             onClick={() => onStatus(user.id, 'approved')}
             className="p-1.5 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
@@ -599,7 +756,7 @@ function UserRow({ user, onStatus, onDelete, onEdit, isSelected, onToggleSelect 
             <UserCheck size={14} />
           </button>
         )}
-        {user.status === 'approved' && (
+        {canApproveUsers && user.status === 'approved' && (
           <button
             onClick={() => onStatus(user.id, 'blocked')}
             className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
@@ -608,7 +765,7 @@ function UserRow({ user, onStatus, onDelete, onEdit, isSelected, onToggleSelect 
             <UserX size={14} />
           </button>
         )}
-        {user.status === 'blocked' && (
+        {canApproveUsers && user.status === 'blocked' && (
           <button
             onClick={() => onStatus(user.id, 'approved')}
             className="p-1.5 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
@@ -617,7 +774,16 @@ function UserRow({ user, onStatus, onDelete, onEdit, isSelected, onToggleSelect 
             <UserCheck size={14} />
           </button>
         )}
-        {user.role !== 'admin' && (
+        {canManageUserPermissions && user.role !== 'admin' && (
+          <button
+            onClick={() => onPermissions(user)}
+            className="p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+            title="إدارة الصلاحيات"
+          >
+            <Shield size={14} />
+          </button>
+        )}
+        {canManageUsers && user.role !== 'admin' && (
           <button
             onClick={() => onEdit(user)}
             className="p-1.5 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors"
@@ -626,7 +792,7 @@ function UserRow({ user, onStatus, onDelete, onEdit, isSelected, onToggleSelect 
             <Edit2 size={14} />
           </button>
         )}
-        {user.role !== 'admin' && (
+        {canManageUsers && user.role !== 'admin' && (
           <button
             onClick={() => onDelete(user.id, user.name)}
             className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors"

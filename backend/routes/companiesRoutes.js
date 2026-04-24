@@ -1,13 +1,13 @@
 ﻿const express = require('express');
 const db = require('../database');
-const { adminMiddleware, authMiddleware } = require('../middleware/authMiddleware');
+const { adminMiddleware, authMiddleware, hasAnyPermission, hasPermission } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 const PRODUCT_TYPES = ['كاش', 'نقاط بيع', 'عقار', 'تمويل شخصي', 'أسطول', 'رهن', 'تمويل تجاري'];
 
 // ===== CONTACTS =====
-router.get('/contacts', adminMiddleware, async (req, res) => {
+router.get('/contacts', hasAnyPermission(['manage_funding', 'send_to_funding']), async (req, res) => {
   try {
     const { entity_id } = req.query;
     let contacts;
@@ -20,7 +20,7 @@ router.get('/contacts', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في استرجاع جهات الاتصال' }); }
 });
 
-router.post('/contacts', adminMiddleware, async (req, res) => {
+router.post('/contacts', hasPermission('manage_funding'), async (req, res) => {
   try {
     const { funding_entity_id, name, phone, product_types, notes } = req.body;
     if (!funding_entity_id || !name?.trim()) return res.status(400).json({ error: 'الجهة التمويلية والاسم مطلوبان' });
@@ -31,7 +31,7 @@ router.post('/contacts', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في الإضافة' }); }
 });
 
-router.put('/contacts/:id', adminMiddleware, async (req, res) => {
+router.put('/contacts/:id', hasPermission('manage_funding'), async (req, res) => {
   try {
     const { name, phone, product_types, notes, is_active, funding_entity_id } = req.body;
     const contact = await db.prepare('SELECT * FROM funding_entity_contacts WHERE id = ?').get(req.params.id);
@@ -45,7 +45,7 @@ router.put('/contacts/:id', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في التحديث' }); }
 });
 
-router.delete('/contacts/:id', adminMiddleware, async (req, res) => {
+router.delete('/contacts/:id', hasPermission('manage_funding'), async (req, res) => {
   try {
     await db.prepare('DELETE FROM funding_entity_contacts WHERE id = ?').run(req.params.id);
     res.json({ message: 'تم الحذف' });

@@ -52,4 +52,16 @@ const hasPermission = (permKey) => (req, res, next) => {
   });
 };
 
-module.exports = { authMiddleware, adminMiddleware, hasPermission };
+const hasAnyPermission = (permKeys = []) => (req, res, next) => {
+  authMiddleware(req, res, () => {
+    if (req.user.role === 'admin') {
+      return next();
+    }
+    if (permKeys.some((permKey) => req.user.permissions.includes(permKey))) {
+      return next();
+    }
+    return res.status(403).json({ error: 'ليس لديك صلاحية للقيام بهذه العملية' });
+  });
+};
+
+module.exports = { authMiddleware, adminMiddleware, hasPermission, hasAnyPermission };
