@@ -760,6 +760,7 @@ export default function Requests() {
     return null;
   };
   const [requests, setRequests] = useState([]);
+  const [selectedRequestIds, setSelectedRequestIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -977,12 +978,17 @@ export default function Requests() {
     if (res.ok) load(); else { const d = await res.json(); alert(d.error || 'خطأ في الحذف'); }
   };
 
+  const toggleRequestSelection = (id) => {
+    setSelectedRequestIds(prev => prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]);
+  };
+
   const load = async () => {
     setLoading(true);
     const url = isAdmin ? '/api/admin/requests' : '/api/requests';
     const res = await authFetch(url);
     const data = res.ok ? await res.json() : [];
     setRequests(Array.isArray(data) ? data : []);
+    setSelectedRequestIds([]);
     setLoading(false);
   };
 
@@ -1203,6 +1209,31 @@ export default function Requests() {
     const matchStatus = !filterStatus || r.status === filterStatus;
     return matchSearch && matchStatus;
   });
+  const visibleRequestIds = isAdmin ? filtered.map(request => request.id) : [];
+  const allVisibleRequestsSelected = visibleRequestIds.length > 0 && visibleRequestIds.every(id => selectedRequestIds.includes(id));
+
+  const toggleSelectAllRequests = () => {
+    if (allVisibleRequestsSelected) {
+      setSelectedRequestIds(prev => prev.filter(id => !visibleRequestIds.includes(id)));
+      return;
+    }
+    setSelectedRequestIds(prev => Array.from(new Set([...prev, ...visibleRequestIds])));
+  };
+
+  const bulkDeleteRequests = async () => {
+    if (selectedRequestIds.length === 0) return;
+    if (!confirm(`حذف ${selectedRequestIds.length} طلب؟`)) return;
+    const res = await authFetch('/api/requests/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids: selectedRequestIds }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'خطأ في الحذف الجماعي');
+      return;
+    }
+    load();
+  };
 
   const myMissingCount = !isAdmin
     ? requests.filter(r => r.status === 'missing').length
@@ -1244,6 +1275,30 @@ export default function Requests() {
         </select>
       </div>
 
+      {isAdmin && visibleRequestIds.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={allVisibleRequestsSelected}
+              onChange={toggleSelectAllRequests}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            {allVisibleRequestsSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل'}
+          </label>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">{selectedRequestIds.length} محدد</span>
+            <button
+              onClick={bulkDeleteRequests}
+              disabled={selectedRequestIds.length === 0}
+              className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 size={15} /> حذف المحدد
+            </button>
+          </div>
+        </div>
+      )}
+
       {!isAdmin && myMissingCount > 0 && (
         <div className="mb-4 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-orange-800">
@@ -1272,6 +1327,7 @@ export default function Requests() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
+                  {isAdmin && <th className="px-4 py-3.5"></th>}
                   <th className="text-right px-5 py-3.5 font-semibold text-gray-500 text-xs hidden sm:table-cell">#</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs">المنشأة</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-gray-500 text-xs hidden md:table-cell">جوال المالك</th>
@@ -1290,6 +1346,16 @@ export default function Requests() {
                     : (USER_STATUS_MAP[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-600' });
                   return (
                     <tr key={r.id} className="hover:bg-blue-50/30 transition-colors group">
+                      {isAdmin && (
+                        <td className="px-4 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedRequestIds.includes(r.id)}
+                            onChange={() => toggleRequestSelection(r.id)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-5 py-4 text-gray-400 font-mono text-xs hidden sm:table-cell">{r.id}</td>
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2.5">

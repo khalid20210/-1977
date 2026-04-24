@@ -16,6 +16,7 @@ const typeColors = {
 export default function Establishments() {
   const { authFetch } = useAuth();
   const [items, setItems] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -31,8 +32,10 @@ export default function Establishments() {
       const res = await authFetch('/api/admin/companies' + (query ? `?search=${encodeURIComponent(query)}` : ''));
       const data = res.ok ? await res.json() : [];
       setItems(Array.isArray(data) ? data : []);
+      setSelectedIds([]);
     } catch (_) {
       setItems([]);
+      setSelectedIds([]);
     }
     setLoading(false);
   };
@@ -118,6 +121,10 @@ export default function Establishments() {
     }
   };
 
+  const toggleSelection = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]);
+  };
+
   const filtered = search
     ? items.filter(item =>
         item.company_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -125,6 +132,36 @@ export default function Establishments() {
         item.owner_phone?.includes(search)
       )
     : items;
+
+  const visibleSelectableIds = filtered.map(item => item.id);
+  const allVisibleSelected = visibleSelectableIds.length > 0 && visibleSelectableIds.every(id => selectedIds.includes(id));
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(prev => prev.filter(id => !visibleSelectableIds.includes(id)));
+      return;
+    }
+    setSelectedIds(prev => Array.from(new Set([...prev, ...visibleSelectableIds])));
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`هل تريد حذف ${selectedIds.length} منشأة؟`)) return;
+    try {
+      const res = await authFetch('/api/admin/companies/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'خطأ في الحذف الجماعي');
+        return;
+      }
+      await load();
+    } catch (_) {
+      alert('حدث خطأ في الحذف الجماعي');
+    }
+  };
 
   return (
     <div dir="rtl">
@@ -158,6 +195,30 @@ export default function Establishments() {
         )}
       </form>
 
+      {visibleSelectableIds.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={toggleSelectAllVisible}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            {allVisibleSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل'}
+          </label>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">{selectedIds.length} محدد</span>
+            <button
+              onClick={bulkDelete}
+              disabled={selectedIds.length === 0}
+              className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 size={15} /> حذف المحدد
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {ENTITY_TYPES.slice(0, 4).map(type => {
           const count = items.filter(item => item.entity_type === type).length;
@@ -185,6 +246,12 @@ export default function Establishments() {
           <div className="divide-y divide-gray-50">
             {filtered.map(item => (
               <div key={item.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(item.id)}
+                  onChange={() => toggleSelection(item.id)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-black text-lg shadow-sm"
                   style={{ background: 'linear-gradient(135deg, #1e3a8a, #2563eb)' }}

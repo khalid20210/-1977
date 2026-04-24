@@ -8,6 +8,7 @@ export default function Companies() {
   const { authFetch } = useAuth();
   const [tab, setTab] = useState('entities'); // 'entities' | 'contacts'
   const [entities, setEntities] = useState([]);
+  const [selectedEntityIds, setSelectedEntityIds] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -28,6 +29,7 @@ export default function Companies() {
     const res = await authFetch('/api/admin/funding-entities');
     const data = res.ok ? await res.json() : [];
     setEntities(Array.isArray(data) ? data : []);
+    setSelectedEntityIds([]);
   };
   const loadContacts = async () => {
     const res = await authFetch('/api/companies/contacts');
@@ -66,6 +68,10 @@ export default function Companies() {
     else { const d = await res.json(); alert(d.error || 'خطأ'); }
   };
 
+  const toggleEntitySelection = (id) => {
+    setSelectedEntityIds(prev => prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]);
+  };
+
   // Contact CRUD
   const openNewContact = () => { setEditContact(null); setContactForm(defaultContactForm); setShowContactModal(true); };
   const openEditContact = (c) => {
@@ -99,6 +105,31 @@ export default function Companies() {
 
   const filteredEntities = entities.filter(e => e.name?.toLowerCase().includes(search.toLowerCase()));
   const filteredContacts = contacts.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()) || c.entity_name?.toLowerCase().includes(search.toLowerCase()));
+  const visibleEntityIds = filteredEntities.map(entity => entity.id);
+  const allVisibleEntitiesSelected = visibleEntityIds.length > 0 && visibleEntityIds.every(id => selectedEntityIds.includes(id));
+
+  const toggleSelectAllEntities = () => {
+    if (allVisibleEntitiesSelected) {
+      setSelectedEntityIds(prev => prev.filter(id => !visibleEntityIds.includes(id)));
+      return;
+    }
+    setSelectedEntityIds(prev => Array.from(new Set([...prev, ...visibleEntityIds])));
+  };
+
+  const bulkDeleteEntities = async () => {
+    if (selectedEntityIds.length === 0) return;
+    if (!confirm(`حذف ${selectedEntityIds.length} جهة تمويلية؟`)) return;
+    const res = await authFetch('/api/admin/funding-entities/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids: selectedEntityIds }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'خطأ في الحذف الجماعي');
+      return;
+    }
+    loadEntities();
+  };
 
   return (
     <div>
@@ -129,6 +160,30 @@ export default function Companies() {
           className="w-full border border-gray-200 rounded-xl py-2.5 pr-10 pl-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
+      {tab === 'entities' && visibleEntityIds.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={allVisibleEntitiesSelected}
+              onChange={toggleSelectAllEntities}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            {allVisibleEntitiesSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل'}
+          </label>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">{selectedEntityIds.length} محدد</span>
+            <button
+              onClick={bulkDeleteEntities}
+              disabled={selectedEntityIds.length === 0}
+              className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 size={15} /> حذف المحدد
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : tab === 'entities' ? (
@@ -140,6 +195,12 @@ export default function Companies() {
               {filteredEntities.map(e => (
                 <div key={e.id} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedEntityIds.includes(e.id)}
+                      onChange={() => toggleEntitySelection(e.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                       <Building2 size={18} className="text-blue-600" />
                     </div>

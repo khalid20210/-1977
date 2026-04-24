@@ -138,6 +138,27 @@ router.delete('/users/:id', adminMiddleware, async (req, res) => {
   }
 });
 
+router.post('/users/bulk-delete', adminMiddleware, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+    if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد مستخدمين للحذف' });
+
+    let deletedCount = 0;
+
+    for (const id of ids) {
+      const user = await db.prepare('SELECT role FROM users WHERE id = ?').get(id);
+      if (!user || user.role === 'admin') continue;
+      await db.prepare('DELETE FROM users WHERE id = ?').run(id);
+      deletedCount += 1;
+    }
+
+    res.json({ message: `تم حذف ${deletedCount} مستخدم`, deletedCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'خطأ في الحذف الجماعي' });
+  }
+});
+
 router.put('/users/:id/password', adminMiddleware, async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
@@ -521,6 +542,27 @@ router.delete('/funding-entities/:id', adminMiddleware, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطأ في الحذف' });
+  }
+});
+
+router.post('/funding-entities/bulk-delete', adminMiddleware, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+    if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد جهات تمويلية للحذف' });
+
+    let deletedCount = 0;
+
+    for (const id of ids) {
+      const entity = await db.prepare('SELECT id FROM funding_entities WHERE id = ?').get(id);
+      if (!entity) continue;
+      await db.prepare('DELETE FROM funding_entities WHERE id = ?').run(id);
+      deletedCount += 1;
+    }
+
+    res.json({ message: `تم حذف ${deletedCount} جهة تمويلية`, deletedCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'خطأ في الحذف الجماعي' });
   }
 });
 

@@ -1199,6 +1199,31 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/requests/:id — admin hard delete
+router.post('/bulk-delete', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'المدير فقط يمكنه الحذف' });
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+    if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد طلبات للحذف' });
+
+    let deletedCount = 0;
+
+    for (const id of ids) {
+      const request = await db.prepare('SELECT id FROM requests WHERE id = ?').get(id);
+      if (!request) continue;
+      await db.prepare('DELETE FROM status_history WHERE request_id = ?').run(id);
+      await db.prepare('DELETE FROM request_messages WHERE request_id = ?').run(id);
+      await db.prepare('DELETE FROM request_documents WHERE request_id = ?').run(id);
+      await db.prepare('DELETE FROM requests WHERE id = ?').run(id);
+      deletedCount += 1;
+    }
+
+    res.json({ message: `تم حذف ${deletedCount} طلب`, deletedCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'خطأ في الحذف الجماعي' });
+  }
+});
+
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'المدير فقط يمكنه الحذف' });

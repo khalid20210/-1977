@@ -36,6 +36,25 @@ router.put('/:id', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في التعديل' }); }
 });
 
+router.post('/bulk-delete', authMiddleware, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+    if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد وسطاء للحذف' });
+
+    let deletedCount = 0;
+
+    for (const id of ids) {
+      const broker = await db.prepare('SELECT * FROM brokers WHERE id = ?').get(id);
+      if (!broker) continue;
+      if (req.user.role !== 'admin' && broker.added_by_id !== req.user.id) continue;
+      await db.prepare('DELETE FROM brokers WHERE id = ?').run(id);
+      deletedCount += 1;
+    }
+
+    res.json({ message: `تم حذف ${deletedCount} وسيط`, deletedCount });
+  } catch (err) { res.status(500).json({ error: 'خطأ في الحذف الجماعي' }); }
+});
+
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const broker = await db.prepare('SELECT * FROM brokers WHERE id = ?').get(req.params.id);

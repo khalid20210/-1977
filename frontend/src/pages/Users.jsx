@@ -10,6 +10,7 @@ const statusLabel = { approved: 'نشط', pending: 'بانتظار المواف�
 export default function Users() {
   const { authFetch } = useAuth();
   const [users, setUsers] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -32,6 +33,7 @@ export default function Users() {
     const res = await authFetch('/api/admin/users');
     const data = res.ok ? await res.json() : [];
     setUsers(Array.isArray(data) ? data : []);
+    setSelectedIds([]);
     setLoading(false);
   };
 
@@ -52,6 +54,12 @@ export default function Users() {
       alert(data.error || 'خطأ');
     }
   };
+
+  const toggleSelection = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]);
+  };
+
+  const clearSelection = () => setSelectedIds([]);
 
   const openEdit = (user) => {
     setEditUser(user);
@@ -121,6 +129,34 @@ export default function Users() {
     user.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const visibleSelectableIds = filtered.filter(user => user.role !== 'admin').map(user => user.id);
+  const allVisibleSelected = visibleSelectableIds.length > 0 && visibleSelectableIds.every(id => selectedIds.includes(id));
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(prev => prev.filter(id => !visibleSelectableIds.includes(id)));
+      return;
+    }
+    setSelectedIds(prev => Array.from(new Set([...prev, ...visibleSelectableIds])));
+  };
+
+  const bulkDeleteUsers = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`هل أنت متأكد من حذف ${selectedIds.length} مستخدم؟`)) return;
+
+    const res = await authFetch('/api/admin/users/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids: selectedIds }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'خطأ في الحذف الجماعي');
+      return;
+    }
+    clearSelection();
+    load();
+  };
+
   const pending = filtered.filter(user => user.status === 'pending');
   const others = filtered.filter(user => user.status !== 'pending');
 
@@ -159,6 +195,30 @@ export default function Users() {
         />
       </div>
 
+      {visibleSelectableIds.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={toggleSelectAllVisible}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              {allVisibleSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل'}
+            </label>
+            <span className="text-xs text-gray-400">{selectedIds.length} محدد</span>
+          </div>
+          <button
+            onClick={bulkDeleteUsers}
+            disabled={selectedIds.length === 0}
+            className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 size={15} /> حذف المحدد
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -173,7 +233,15 @@ export default function Users() {
               </h2>
               <div className="space-y-2">
                 {pending.map(user => (
-                  <UserRow key={user.id} user={user} onStatus={setStatus} onDelete={deleteUser} onEdit={openEdit} />
+                  <UserRow
+                    key={user.id}
+                    user={user}
+                    onStatus={setStatus}
+                    onDelete={deleteUser}
+                    onEdit={openEdit}
+                    isSelected={selectedIds.includes(user.id)}
+                    onToggleSelect={toggleSelection}
+                  />
                 ))}
               </div>
             </div>
@@ -185,7 +253,15 @@ export default function Users() {
             ) : (
               <div className="divide-y divide-gray-50">
                 {others.map(user => (
-                  <UserRow key={user.id} user={user} onStatus={setStatus} onDelete={deleteUser} onEdit={openEdit} />
+                  <UserRow
+                    key={user.id}
+                    user={user}
+                    onStatus={setStatus}
+                    onDelete={deleteUser}
+                    onEdit={openEdit}
+                    isSelected={selectedIds.includes(user.id)}
+                    onToggleSelect={toggleSelection}
+                  />
                 ))}
               </div>
             )}
@@ -486,10 +562,18 @@ export default function Users() {
   );
 }
 
-function UserRow({ user, onStatus, onDelete, onEdit }) {
+function UserRow({ user, onStatus, onDelete, onEdit, isSelected, onToggleSelect }) {
   return (
     <div className="flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50 transition-colors">
       <div className="flex items-center gap-3">
+        {user.role !== 'admin' && (
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(user.id)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        )}
         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
           <span className="text-blue-700 font-bold text-sm">{user.name?.[0] || '?'}</span>
         </div>

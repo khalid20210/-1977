@@ -84,6 +84,24 @@ router.put('/companies/:id', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'خطأ في التحديث' }); }
 });
 
+router.post('/companies/bulk-delete', adminMiddleware, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+    if (ids.length === 0) return res.status(400).json({ error: 'لم يتم تحديد منشآت للحذف' });
+
+    let deletedCount = 0;
+
+    for (const id of ids) {
+      const company = await db.prepare('SELECT id FROM companies WHERE id = ?').get(id);
+      if (!company) continue;
+      await db.prepare('DELETE FROM companies WHERE id = ?').run(id);
+      deletedCount += 1;
+    }
+
+    res.json({ message: `تم حذف ${deletedCount} منشأة`, deletedCount });
+  } catch (err) { res.status(500).json({ error: 'خطأ في الحذف الجماعي' }); }
+});
+
 router.delete('/companies/:id', adminMiddleware, async (req, res) => {
   try {
     const company = await db.prepare('SELECT id, user_id FROM companies WHERE id = ?').get(req.params.id);
