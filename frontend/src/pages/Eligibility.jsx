@@ -93,6 +93,7 @@ export default function Eligibility() {
     profitRatio: '',
     taxReturnPeriod: 'ربعية',
     hasRequiredTaxReturns: 'لا',
+    hasExistingDebt: 'لا',
     employeeName: '',
     salaryAmount: '',
     existingDebtAmount: '',
@@ -124,6 +125,7 @@ export default function Eligibility() {
   const isRealEstateFunding = form.fundingType === 'عقار';
   const isMortgageFunding = form.fundingType === 'رهن';
   const isPropertyFunding = isRealEstateFunding || isMortgageFunding;
+  const isRevenueBasedFunding = !isTaxFunding && !isPersonalFunding && !isPropertyFunding;
   const isBusinessApplicant = isPropertyFunding && form.applicantCategory === 'مالك منشأة';
   const isEmployeeApplicant = isPropertyFunding && form.applicantCategory === 'موظف';
   const requiredTaxReturnsCount = form.taxReturnPeriod === 'ربعية' ? 6 : 15;
@@ -140,9 +142,10 @@ export default function Eligibility() {
       profitRatio: nextFundingType === 'كاش' && current.hasFinancialStatements === 'نعم' ? current.profitRatio : '',
       taxReturnPeriod: nextFundingType === 'إقرارات ضريبية' ? current.taxReturnPeriod : 'ربعية',
       hasRequiredTaxReturns: nextFundingType === 'إقرارات ضريبية' ? current.hasRequiredTaxReturns : 'لا',
+      hasExistingDebt: (!['إقرارات ضريبية', 'تمويل شخصي', 'عقار', 'رهن'].includes(nextFundingType) ? current.hasExistingDebt : 'لا'),
       employeeName: nextFundingType === 'تمويل شخصي' ? current.employeeName : '',
       salaryAmount: nextFundingType === 'تمويل شخصي' ? current.salaryAmount : '',
-      existingDebtAmount: nextFundingType === 'تمويل شخصي' ? current.existingDebtAmount : '',
+      existingDebtAmount: (!['إقرارات ضريبية', 'عقار', 'رهن'].includes(nextFundingType) || nextFundingType === 'تمويل شخصي') ? current.existingDebtAmount : '',
       personalNationality: nextFundingType === 'تمويل شخصي' ? current.personalNationality : 'سعودي',
       hasSimahIssues: nextFundingType === 'تمويل شخصي' ? current.hasSimahIssues : 'لا',
       hasServiceStop: nextFundingType === 'تمويل شخصي' ? current.hasServiceStop : 'لا',
@@ -196,7 +199,7 @@ export default function Eligibility() {
           recordAgeMonths: Number(form.recordAgeMonths) || 0,
           ownershipType:   form.ownershipType,
           entityType:      form.entityType,
-          liabilitiesAmount: isPersonalFunding ? (Number(form.existingDebtAmount) || 0) : 0,
+          liabilitiesAmount: (isPersonalFunding || isRevenueBasedFunding) && (isPersonalFunding || form.hasExistingDebt === 'نعم') ? (Number(form.existingDebtAmount) || 0) : 0,
           profitRatio:     form.hasFinancialStatements === 'نعم' ? (Number(form.profitRatio) || 0) : 0,
           personalSalary:  isPersonalFunding ? (Number(form.salaryAmount) || 0) : 0,
           hasSimahIssues:  isPersonalFunding ? form.hasSimahIssues === 'نعم' : false,
@@ -223,6 +226,8 @@ export default function Eligibility() {
   const personalEligible = checked && isPersonalFunding && result?.eligible;
   const propertyEligible = checked && isPropertyFunding && result?.eligible;
   const eligible = isTaxFunding ? declarationEligible : (isPersonalFunding ? personalEligible : (isPropertyFunding ? propertyEligible : cashEligibleAlternative));
+  const showApproximateFunding = eligible && isRevenueBasedFunding && Number(result?.approximateFundingMax) >= 0;
+  const hasDebtAdjustment = Number(result?.debtAmount) > 0;
   const statusTitle = isTaxFunding
     ? (declarationEligible ? 'أنت مؤهل لتمويل الإقرارات' : 'أنت غير مؤهل لتمويل الإقرارات حالياً')
     : isPersonalFunding
@@ -245,7 +250,7 @@ export default function Eligibility() {
           ? `تمت مطابقة بيانات ${form.fundingType} على فئة ${form.applicantCategory} مع قيمة أصل ${SAR(Number(form.propertyValue) || 0)}.`
           : `تم فحص مسار ${form.fundingType} لفئة ${form.applicantCategory} بناءً على قيمة الأصل والدخل أو دخل النشاط والاشتراطات الأساسية.`)
     : (eligible
-        ? `وجدنا ${result.entities.length} جهة أو مسار تمويلي مناسب`
+      ? `التقدير الأولي مبني على نحو 30% من الإيراد${hasDebtAdjustment ? ' بعد خصم المديونية الحالية' : ''}.`
         : 'لا تستوفي المنشأة شروط التمويل المتاحة حالياً');
 
   return (
@@ -411,6 +416,27 @@ export default function Eligibility() {
               </>
             )}
 
+            {isRevenueBasedFunding && (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="هل توجد مديونية حالية؟">
+                  <Select value={form.hasExistingDebt} onChange={set('hasExistingDebt')} options={FINANCIAL_STATEMENT_OPTIONS} />
+                </Field>
+                {form.hasExistingDebt === 'نعم' ? (
+                  <Field label="إجمالي المديونية الحالية (ر.س)">
+                    <NumberInput value={form.existingDebtAmount} onChange={set('existingDebtAmount')} placeholder="مثال: 120000" />
+                  </Field>
+                ) : (
+                  <Field label="إجمالي المديونية الحالية (ر.س)">
+                    <input
+                      value="لا توجد مديونية"
+                      disabled
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 text-gray-400"
+                    />
+                  </Field>
+                )}
+              </div>
+            )}
+
             {isTaxFunding && (
               <>
                 <div className="grid grid-cols-2 gap-3">
@@ -539,37 +565,42 @@ export default function Eligibility() {
                 </div>
               </div>
 
-              {!isPersonalFunding && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+              {showApproximateFunding && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 <StatCard
-                  icon={isPropertyFunding ? Home : Wallet}
-                  label="التمويل التقريبي"
-                  value={SAR(result?.estimatedFundingAmount || 0)}
-                  sub={isPropertyFunding ? 'تقدير أولي بناءً على قيمة الأصل والمدخلات الحالية' : 'قد يصل إلى 60% من الأساس المالي المعتمد'}
+                  icon={Wallet}
+                  label="النطاق التمويلي التقريبي"
+                  value={`${SAR(result?.approximateFundingMin || 0)} - ${SAR(result?.approximateFundingMax || 0)}`}
+                  sub="تقدير أولي بعد احتساب 30% تقريباً من الإيراد السنوي"
                   tone="blue"
                 />
                 <StatCard
                   icon={Percent}
-                  label="الفائدة المتوقعة"
-                  value={result?.interestRateLabel || '7% - 14%'}
-                  sub="تختلف حسب الجهة والملف النهائي"
-                  tone="amber"
-                />
-                <StatCard
-                  icon={ShieldCheck}
-                  label="نسبة نجاح تقديرية"
-                  value={`${result?.successProbability || 0}%`}
-                  sub={result?.debtHealthy ? 'المديونيات ضمن النطاق المفضل' : 'المديونيات تضعف الملف حالياً'}
-                  tone={result?.debtHealthy ? 'green' : 'purple'}
+                  label="الأساس قبل الخصم"
+                  value={SAR(result?.approximateFundingBaseAmount || 0)}
+                  sub="قبل خصم أي مديونية حالية"
+                  tone="green"
                 />
                 <StatCard
                   icon={Landmark}
-                  label="نسبة المديونية"
-                  value={`${result?.debtRatio || 0}%`}
-                  sub={(result?.annualRevenue || 0) > 0 ? `مقارنة بإيراد تقريبي ${SAR(result?.annualRevenue || 0)}` : 'أدخل إيرادات أو نقاط بيع لاحتسابها'}
-                  tone={result?.debtHealthy ? 'green' : 'amber'}
+                  label="المديونية المخصومة"
+                  value={SAR(result?.debtAmount || 0)}
+                  sub={hasDebtAdjustment ? 'تم خصمها من التقدير الأولي' : 'لا توجد مديونية مؤثرة على التقدير'}
+                  tone={hasDebtAdjustment ? 'amber' : 'green'}
                 />
               </div>
+              )}
+
+              {showApproximateFunding && (
+                <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck size={20} className="text-blue-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-blue-800 text-sm">ملاحظة على مبلغ التمويل</p>
+                      <p className="text-xs text-blue-700 mt-1 leading-6">{result?.exactAmountDisclaimer || 'من أجل تحديد مبلغ التمويل الصحيح يجب تقديم الطلب مكتملًا للدراسة والاعتماد.'}</p>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {!!result?.matchedRules?.length && !isTaxFunding && (

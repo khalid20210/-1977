@@ -169,6 +169,30 @@ function pickEntity(entities, keywords, fallbackName, notes) {
   return { id: fallbackName, name: fallbackName, notes };
 }
 
+function buildApproximateFundingRange(baseAmount, debtAmount) {
+  const normalizedBaseAmount = Math.max(0, Math.round(Number(baseAmount) || 0));
+  const normalizedDebtAmount = Math.max(0, Math.round(Number(debtAmount) || 0));
+  const netAmount = Math.max(0, normalizedBaseAmount - normalizedDebtAmount);
+
+  if (netAmount <= 0) {
+    return {
+      baseAmount: normalizedBaseAmount,
+      debtDeductionAmount: normalizedDebtAmount,
+      netAmount: 0,
+      minAmount: 0,
+      maxAmount: 0,
+    };
+  }
+
+  return {
+    baseAmount: normalizedBaseAmount,
+    debtDeductionAmount: normalizedDebtAmount,
+    netAmount,
+    minAmount: Math.max(0, Math.round(netAmount * 0.9)),
+    maxAmount: Math.max(0, Math.round(netAmount * 1.1)),
+  };
+}
+
 // Helper: check eligibility against financing rules
 async function checkEligibility(
   totalPos,
@@ -204,6 +228,7 @@ async function checkEligibility(
   const debtHealthy = annualRevenue > 0 && debtAmount <= annualRevenue * 0.3 && debtAmount < annualRevenue;
   const successProbability = debtHealthy ? 85 : 65;
   const estimatedFundingAmount = Math.round((Number(totalPos) > 0 ? Number(totalPos) : annualRevenue) * 0.6);
+  const approximateFunding = buildApproximateFundingRange(annualRevenue * 0.3, debtAmount);
   const minAgeMonths = isForeign ? 36 : 24;
   const foreignRevenueFastTrackEligible = isForeign && annualRevenue >= 3000000 && recordAgeMonths >= 18;
   const tips = [];
@@ -261,6 +286,10 @@ async function checkEligibility(
       debtHealthy: debtEligible,
       successProbability: isEligible ? 85 : 0,
       profitRatio: 0,
+      approximateFundingBaseAmount: null,
+      approximateFundingMin: null,
+      approximateFundingMax: null,
+      exactAmountDisclaimer: 'المبلغ النهائي يعتمد على دراسة الطلب المكتمل واعتماد الجهة التمويلية.',
       needsCollateral: false,
       guaranteeNote: isEligible
         ? 'الحالة مستوفية لشروط التمويل الشخصي الأساسية.'
@@ -364,6 +393,10 @@ async function checkEligibility(
       debtHealthy: normalizedApplicantCategory === 'مالك منشأة' ? debtHealthy : (monthlyIncomeAmount > 0 ? debtAmount <= monthlyIncomeAmount * 0.45 : true),
       successProbability: isEligible ? (titleReady ? 82 : 70) : 0,
       profitRatio: Number(profitRatio) || 0,
+      approximateFundingBaseAmount: null,
+      approximateFundingMin: null,
+      approximateFundingMax: null,
+      exactAmountDisclaimer: 'المبلغ النهائي يعتمد على دراسة الطلب المكتمل واعتماد الجهة التمويلية.',
       needsCollateral: false,
       guaranteeNote: isMortgageFunding
         ? 'المراجعة النهائية للرهن تعتمد على سلامة بيانات العقار ونسبة التمويل إلى قيمة الأصل.'
@@ -504,12 +537,16 @@ async function checkEligibility(
     interestRateMin: 7,
     interestRateMax: 14,
     interestRateLabel: '7% - 14%',
-    estimatedFundingAmount,
+    estimatedFundingAmount: isEligible ? approximateFunding.netAmount : estimatedFundingAmount,
     debtAmount,
     debtRatio,
     debtHealthy,
     successProbability,
     profitRatio: Number(profitRatio) || 0,
+    approximateFundingBaseAmount: isEligible ? approximateFunding.baseAmount : null,
+    approximateFundingMin: isEligible ? approximateFunding.minAmount : null,
+    approximateFundingMax: isEligible ? approximateFunding.maxAmount : null,
+    exactAmountDisclaimer: 'من أجل تحديد مبلغ التمويل الصحيح يجب تقديم الطلب مكتملًا للدراسة والاعتماد.',
     needsCollateral: isForeign && Number(profitRatio) < 8,
     guaranteeNote,
   };
