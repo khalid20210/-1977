@@ -7,6 +7,25 @@ const roleColor = { admin: 'bg-purple-100 text-purple-700', employee: 'bg-blue-1
 const statusColor = { approved: 'bg-green-100 text-green-700', pending: 'bg-yellow-100 text-yellow-700', blocked: 'bg-red-100 text-red-700' };
 const statusLabel = { approved: 'نشط', pending: 'بانتظار الموافقة', blocked: 'محظور' };
 
+function formatLastSeen(lastSeenAt) {
+  if (!lastSeenAt) return 'لم يسجل دخول بعد';
+
+  const lastSeenDate = new Date(lastSeenAt);
+  if (Number.isNaN(lastSeenDate.getTime())) return 'آخر ظهور غير متاح';
+
+  const diffMs = Date.now() - lastSeenDate.getTime();
+  const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+
+  if (diffMinutes < 1) return 'آخر ظهور الآن';
+  if (diffMinutes < 60) return `آخر ظهور قبل ${diffMinutes} د`;
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `آخر ظهور قبل ${diffHours} س`;
+
+  const diffDays = Math.round(diffHours / 24);
+  return `آخر ظهور قبل ${diffDays} يوم`;
+}
+
 export default function Users() {
   const { authFetch, isAdmin, user, hasPermission, refreshUser } = useAuth();
   const canManageUsers = hasPermission('manage_users');
@@ -38,16 +57,33 @@ export default function Users() {
   const [savingPermissions, setSavingPermissions] = useState(false);
   const [permissionsAreAutoManaged, setPermissionsAreAutoManaged] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    const res = await authFetch('/api/admin/users');
-    const data = res.ok ? await res.json() : [];
-    setUsers(Array.isArray(data) ? data : []);
-    setSelectedIds([]);
-    setLoading(false);
+  const load = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    try {
+      const res = await authFetch('/api/admin/users');
+      const data = res.ok ? await res.json() : [];
+      setUsers(Array.isArray(data) ? data : []);
+      if (!silent) setSelectedIds([]);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+
+    load();
+
+    const timer = setInterval(() => {
+      if (!active) return;
+      load({ silent: true });
+    }, 10000);
+
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   const setStatus = async (id, status) => {
     if (!canApproveUsers) return;
@@ -721,6 +757,10 @@ export default function Users() {
 
 function UserRow({ user, onStatus, onDelete, onEdit, onPermissions, isSelected, onToggleSelect, canManageUsers, canApproveUsers, canManageUserPermissions }) {
   const isOnline = Boolean(user.is_online);
+  const presenceLabel = isOnline ? 'متصل الآن' : 'غير متصل';
+  const presenceBadgeClass = isOnline
+    ? 'bg-emerald-100 text-emerald-700'
+    : 'bg-slate-100 text-slate-500';
 
   return (
     <div className="flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50 transition-colors">
@@ -744,11 +784,15 @@ function UserRow({ user, onStatus, onDelete, onEdit, onPermissions, isSelected, 
           </div>
           <div className="text-gray-400 text-xs">{user.email}</div>
           {user.phone && <div className="text-gray-400 text-xs">{user.phone}</div>}
+          <div className="text-[11px] mt-1 text-slate-400">{isOnline ? 'نشط داخل المنصة الآن' : formatLastSeen(user.last_seen_at)}</div>
         </div>
       </div>
       <div className="flex items-center gap-2">
         <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${roleColor[user.role] || 'bg-gray-100 text-gray-600'}`}>
           {roleLabel[user.role] || user.role}
+        </span>
+        <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${presenceBadgeClass}`} title={isOnline ? 'المستخدم متصل حاليًا داخل المنصة' : formatLastSeen(user.last_seen_at)}>
+          {presenceLabel}
         </span>
         <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${statusColor[user.status] || 'bg-gray-100 text-gray-600'}`}>
           {statusLabel[user.status] || user.status}
